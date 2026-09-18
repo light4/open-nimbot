@@ -13,6 +13,7 @@ struct CanvasLayer: Identifiable {
     var frame: CGRect
     var font: NSFont = .systemFont(ofSize: 18)
     var bold = false
+    var italic = false
     var zIndex = 0
 }
 
@@ -48,6 +49,13 @@ final class CanvasDocument: ObservableObject {
         let layer = CanvasLayer(content: .path(points), frame: .zero, zIndex: layers.count)
         layers.append(layer)
         selectedID = layer.id
+    }
+
+    func replaceLayers(with source: CanvasDocument) {
+        layers = source.layers.map {
+            CanvasLayer(content: $0.content, frame: $0.frame, font: $0.font, bold: $0.bold, italic: $0.italic, zIndex: $0.zIndex)
+        }
+        selectedID = nil
     }
 
     func deleteSelected() {

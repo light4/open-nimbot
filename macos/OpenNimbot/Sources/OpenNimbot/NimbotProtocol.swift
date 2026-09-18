@@ -73,15 +73,16 @@ enum NimbotProtocol {
         for layer in canvas.layers.sorted(by: { $0.zIndex < $1.zIndex }) {
             switch layer.content {
             case let .text(text):
-                let font = layer.bold ? NSFontManager.shared.convert(layer.font, toHaveTrait: .boldFontMask) : layer.font
-                (text as NSString).draw(in: layer.frame, withAttributes: [.font: font, .foregroundColor: NSColor.black])
+                var font = layer.bold ? NSFontManager.shared.convert(layer.font, toHaveTrait: .boldFontMask) : layer.font
+                if layer.italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
+                (text as NSString).draw(in: physicalFrame(layer.frame, height: media.height), withAttributes: [.font: font, .foregroundColor: NSColor.black])
             case let .image(image):
-                image.draw(in: layer.frame)
+                image.draw(in: physicalFrame(layer.frame, height: media.height))
             case let .path(points):
                 guard let first = points.first else { continue }
                 let path = NSBezierPath()
-                path.move(to: first)
-                for point in points.dropFirst() { path.line(to: point) }
+                path.move(to: physicalPoint(first, height: media.height))
+                for point in points.dropFirst() { path.line(to: physicalPoint(point, height: media.height)) }
                 path.lineWidth = 2
                 NSColor.black.setStroke()
                 path.stroke()
@@ -89,6 +90,14 @@ enum NimbotProtocol {
         }
         NSGraphicsContext.restoreGraphicsState()
         return bitmap
+    }
+
+    private static func physicalFrame(_ frame: CGRect, height: Int) -> CGRect {
+        CGRect(x: frame.minX, y: CGFloat(height) - frame.maxY, width: frame.width, height: frame.height)
+    }
+
+    private static func physicalPoint(_ point: CGPoint, height: Int) -> CGPoint {
+        CGPoint(x: point.x, y: CGFloat(height) - point.y)
     }
 
     private static func uint16(_ value: Int) -> [UInt8] {

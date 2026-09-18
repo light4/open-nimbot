@@ -29,7 +29,7 @@ struct CanvasEditor: View {
             }
             .contentShape(Rectangle())
             .simultaneousGesture(TapGesture().onEnded(onActivate))
-            .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+            .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { value in
                 guard drawing else { return }
                 stroke.append(CGPoint(x: value.location.x / scale, y: value.location.y / scale))
             }.onEnded { _ in
@@ -62,7 +62,7 @@ private struct CanvasLayerView: View {
         content
             .frame(width: max(1, layer.frame.width * scale), height: max(1, layer.frame.height * scale), alignment: .topLeading)
             .position(x: layer.frame.midX * scale, y: layer.frame.midY * scale)
-            .overlay { if document.selectedID == layer.id { Rectangle().stroke(.blue, lineWidth: 1) } }
+            .overlay { if document.selectedID == layer.id { Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3])) } }
             .contentShape(Rectangle())
             .onTapGesture { document.selectedID = layer.id }
             .gesture(DragGesture().onChanged { value in
@@ -77,7 +77,7 @@ private struct CanvasLayerView: View {
 
     @ViewBuilder private var content: some View {
         switch layer.content {
-        case let .text(text): Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular)
+        case let .text(text): Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular).italic(layer.italic)
         case let .image(image): Image(nsImage: image).resizable().scaledToFit()
         case .path: EmptyView()
         }
