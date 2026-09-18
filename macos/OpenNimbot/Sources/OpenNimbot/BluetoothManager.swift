@@ -11,6 +11,7 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
     @Published var printers: [Printer] = []
     @Published var status = "Bluetooth starting…"
     @Published var media = "Label media: not read"
+    @Published var mediaProfile = LabelMedia.fallback
     @Published var connectedPrinter: Printer?
 
     private var central: CBCentralManager!
@@ -104,7 +105,7 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
 
     func print(_ text: String, fontName: String, fontSize: CGFloat) {
         guard let characteristic, !text.isEmpty else { return }
-        queue = NimbotProtocol.printFrames(text: text, fontName: fontName, fontSize: fontSize)
+        queue = NimbotProtocol.printFrames(text: text, fontName: fontName, fontSize: fontSize, media: mediaProfile)
         endingPrint = true
         status = "Sending label…"
         writeNext(to: characteristic)
@@ -135,7 +136,11 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
             responseBuffer.removeFirst(packetLength)
             switch packet[packet.startIndex + 2] {
             case 0x1B:
-                media = NimbotProtocol.mediaDescription(Array(packet.dropFirst(4).dropLast(3)))
+                let body = Array(packet.dropFirst(4).dropLast(3))
+                if let profile = NimbotProtocol.mediaProfile(body) {
+                    mediaProfile = profile
+                }
+                media = NimbotProtocol.mediaDescription(body)
             default:
                 break
             }

@@ -68,8 +68,9 @@ open dist/OpenNimbot.app
 | `ContentView.swift` | 设备选择、文字编辑、字体/字号控制和打印预览。 |
 | `BluetoothManager.swift` | CoreBluetooth 扫描、连接、通知处理与打印传输队列。 |
 | `NimbotProtocol.swift` | B1 V4 报文、RFID 解析、文本布局和栅格编码。 |
+| `LabelMedia.swift` | 标签介质尺寸模型。 |
 
-App 读取到的 RFID 会显示标签条码、序列号、介质类型与已用/总长度。介质类型 `1` 表示有间隙标签。预览与打印共用同一套文本布局和单色栅格编码；超宽文本会自动换行。
+App 连接后会自动读取 RFID，并显示标签条码、序列号、介质类型与已用/总长度。介质类型 `1` 表示有间隙标签。条码 `6971501227682` 已映射为 30 × 15 mm / 2R 标签，即 203 dpi 下单张 240 × 120 px；预览和打印都会使用该尺寸。
 
 ## 已知限制
 

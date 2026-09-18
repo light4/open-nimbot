@@ -9,12 +9,12 @@ enum NimbotProtocol {
         [frame(0x1A, [0x01])]
     }
 
-    static func printFrames(text: String, fontName: String, fontSize: CGFloat) -> [Data] {
-        let rows = rasterRows(text: text, width: 160, fontName: fontName, fontSize: fontSize)
+    static func printFrames(text: String, fontName: String, fontSize: CGFloat, media: LabelMedia) -> [Data] {
+        let rows = rasterRows(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
         var frames = [
             frame(0x21, [0x03]), frame(0x23, [0x01]),
             frame(0x01, [0, 1, 0, 0, 0, 0, 0]), frame(0x03, [0x01]),
-            frame(0x13, uint16(rows.count) + uint16(160) + [0, 1]),
+            frame(0x13, uint16(rows.count) + uint16(media.width) + [0, 1]),
         ]
         for (y, row) in rows.enumerated() {
             if row.allSatisfy({ $0 == 0 }) {
@@ -33,11 +33,23 @@ enum NimbotProtocol {
 
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
 
-    static func preview(text: String, fontName: String, fontSize: CGFloat) -> NSImage {
-        let bitmap = renderBitmap(text: text, width: 160, fontName: fontName, fontSize: fontSize)
+    static func preview(text: String, fontName: String, fontSize: CGFloat, media: LabelMedia) -> NSImage {
+        let bitmap = renderBitmap(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
         let image = NSImage(size: bitmap.size)
         image.addRepresentation(bitmap)
         return image
+    }
+
+    static func mediaProfile(_ data: [UInt8]) -> LabelMedia? {
+        guard data.count > 9 else { return nil }
+        let barcodeLength = Int(data[8])
+        guard data.count >= 9 + barcodeLength else { return nil }
+        let barcode = String(decoding: data[9..<(9 + barcodeLength)], as: UTF8.self)
+        // 6971501227682: NIIMBOT 30 × 15 mm / 2R white gap labels (203 dpi).
+        if barcode == "6971501227682" {
+            return LabelMedia(barcode: barcode, width: 240, height: 120, name: "30 × 15 mm gap label (2R)")
+        }
+        return nil
     }
 
     static func mediaDescription(_ data: [UInt8]) -> String {
@@ -68,8 +80,8 @@ enum NimbotProtocol {
         [UInt8(value >> 8), UInt8(value & 0xff)]
     }
 
-    private static func rasterRows(text: String, width: Int, fontName: String, fontSize: CGFloat) -> [[UInt8]] {
-        let bitmap = renderBitmap(text: text, width: width, fontName: fontName, fontSize: fontSize)
+    private static func rasterRows(text: String, width: Int, height: Int, fontName: String, fontSize: CGFloat) -> [[UInt8]] {
+        let bitmap = renderBitmap(text: text, width: width, height: height, fontName: fontName, fontSize: fontSize)
         return (0..<bitmap.pixelsHigh).map { y in
             stride(from: 0, to: width, by: 8).map { x in
                 (0..<8).reduce(0) { byte, bit in
@@ -80,15 +92,10 @@ enum NimbotProtocol {
         }
     }
 
-    private static func renderBitmap(text: String, width: Int, fontName: String, fontSize: CGFloat) -> NSBitmapImageRep {
+    private static func renderBitmap(text: String, width: Int, height: Int, fontName: String, fontSize: CGFloat) -> NSBitmapImageRep {
         let font = fontName == "System" ? NSFont.systemFont(ofSize: fontSize) : NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
-        let textHeight = (text as NSString).boundingRect(
-            with: NSSize(width: CGFloat(width - 24), height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: attributes
-        ).height
-        let size = NSSize(width: width, height: max(80, Int(ceil(textHeight)) + 24))
+        let size = NSSize(width: width, height: height)
         let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,
             pixelsWide: width,

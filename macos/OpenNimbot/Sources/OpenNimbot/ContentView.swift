@@ -20,6 +20,7 @@ struct ContentView: View {
                 }
             }
             Text(bluetooth.media).font(.caption).textSelection(.enabled)
+            Text("Preview: \(bluetooth.mediaProfile.name)").font(.caption).foregroundStyle(.secondary)
             List(bluetooth.printers) { printer in
                 HStack {
                     Text(printer.name)
@@ -37,7 +38,7 @@ struct ContentView: View {
                 Stepper("Size: \(Int(fontSize))", value: $fontSize, in: 10...48, step: 1)
             }
             GroupBox("Print preview") {
-                Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize))
+                Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize, media: bluetooth.mediaProfile))
                     .resizable()
                     .interpolation(.none)
                     .scaledToFit()
