@@ -22,7 +22,9 @@ final class CanvasDocument: ObservableObject {
     @Published var selectedID: UUID?
 
     init(text: String) {
-        layers = [CanvasLayer(content: .text(text), frame: CGRect(x: 12, y: 40, width: 200, height: 35))]
+        let layer = CanvasLayer(content: .text(text), frame: CGRect(x: 12, y: 40, width: 1, height: 1))
+        layers = [layer]
+        fitText(layer.id)
     }
 
     var selected: CanvasLayer? { layers.first { $0.id == selectedID } }
@@ -33,9 +35,23 @@ final class CanvasDocument: ObservableObject {
     }
 
     func addText() {
-        let layer = CanvasLayer(content: .text("Text"), frame: CGRect(x: 24, y: 24, width: 100, height: 32), zIndex: layers.count)
+        let layer = CanvasLayer(content: .text("Text"), frame: CGRect(x: 24, y: 24, width: 1, height: 1), zIndex: layers.count)
         layers.append(layer)
+        fitText(layer.id)
         selectedID = layer.id
+    }
+
+    func fitText(_ id: UUID) {
+        guard let index = layers.firstIndex(where: { $0.id == id }), case let .text(text) = layers[index].content else { return }
+        var font = layers[index].font
+        if layers[index].bold { font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) }
+        if layers[index].italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
+        let size = (text as NSString).boundingRect(
+            with: NSSize(width: 216, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font]
+        ).integral.size
+        layers[index].frame.size = CGSize(width: max(1, size.width), height: max(1, size.height))
     }
 
     func addImage(_ image: NSImage) {

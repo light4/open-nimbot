@@ -57,6 +57,7 @@ private struct CanvasLayerView: View {
     let scale: CGFloat
     @State private var dragOrigin: CGPoint?
     @State private var resizeFrame: CGRect?
+    @State private var resizeFont: NSFont?
 
     var body: some View {
         content
@@ -70,9 +71,15 @@ private struct CanvasLayerView: View {
                 document.update(layer.id) { $0.frame.origin = CGPoint(x: dragOrigin!.x + value.translation.width / scale, y: dragOrigin!.y + value.translation.height / scale) }
             }.onEnded { _ in dragOrigin = nil })
             .simultaneousGesture(MagnificationGesture().onChanged { value in
-                if resizeFrame == nil { resizeFrame = layer.frame }
-                document.update(layer.id) { $0.frame.size = CGSize(width: max(12, resizeFrame!.width * value), height: max(12, resizeFrame!.height * value)) }
-            }.onEnded { _ in resizeFrame = nil })
+                if case .text = layer.content {
+                    if resizeFont == nil { resizeFont = layer.font }
+                    document.update(layer.id) { $0.font = NSFontManager.shared.convert(resizeFont!, toSize: max(8, resizeFont!.pointSize * value)) }
+                    document.fitText(layer.id)
+                } else {
+                    if resizeFrame == nil { resizeFrame = layer.frame }
+                    document.update(layer.id) { $0.frame.size = CGSize(width: max(12, resizeFrame!.width * value), height: max(12, resizeFrame!.height * value)) }
+                }
+            }.onEnded { _ in resizeFrame = nil; resizeFont = nil })
     }
 
     @ViewBuilder private var content: some View {

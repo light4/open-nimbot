@@ -74,11 +74,11 @@ struct ContentView: View {
         VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 300) }
     }
 
-    private func textBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { text in canvas.update(id) { $0.content = .text(text) } }) }
-    private func fontBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { family in canvas.update(id) { $0.font = family == "System" ? .systemFont(ofSize: $0.font.pointSize) : NSFontManager.shared.font(withFamily: family, traits: [], weight: 5, size: $0.font.pointSize) ?? $0.font } }) }
-    private func fontSizeBinding(_ id: UUID, _ value: CGFloat) -> Binding<Double> { Binding(get: { Double(value) }, set: { size in canvas.update(id) { $0.font = NSFontManager.shared.convert($0.font, toSize: CGFloat(size)) } }) }
-    private func boldBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.bold = enabled } }) }
-    private func italicBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.italic = enabled } }) }
+    private func textBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { text in canvas.update(id) { $0.content = .text(text) }; canvas.fitText(id) }) }
+    private func fontBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { family in canvas.update(id) { $0.font = family == "System" ? .systemFont(ofSize: $0.font.pointSize) : NSFontManager.shared.font(withFamily: family, traits: [], weight: 5, size: $0.font.pointSize) ?? $0.font }; canvas.fitText(id) }) }
+    private func fontSizeBinding(_ id: UUID, _ value: CGFloat) -> Binding<Double> { Binding(get: { Double(value) }, set: { size in canvas.update(id) { $0.font = NSFontManager.shared.convert($0.font, toSize: CGFloat(size)) }; canvas.fitText(id) }) }
+    private func boldBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.bold = enabled }; canvas.fitText(id) }) }
+    private func italicBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.italic = enabled }; canvas.fitText(id) }) }
 
     private var printerMenu: some View { Menu { Button("Scan", action: bluetooth.scan); ForEach(bluetooth.printers) { printer in Button(printer.name) { bluetooth.connect(printer) } }; if bluetooth.connectedPrinter != nil { Button("Refresh media", action: bluetooth.readMedia) } } label: { Label(bluetooth.connectedPrinter?.name ?? "Printer", systemImage: "printer") } }
 }
