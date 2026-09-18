@@ -77,11 +77,7 @@ private struct CanvasLayerView: View {
         switch layer.content {
         case let .text(text): Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular)
         case let .image(image): Image(nsImage: image).resizable().scaledToFit()
-        case let .path(points): Path { path in
-            guard let first = points.first else { return }
-            path.move(to: CGPoint(x: first.x * scale, y: first.y * scale))
-            for point in points.dropFirst() { path.addLine(to: CGPoint(x: point.x * scale, y: point.y * scale)) }
-        }.stroke(.black, lineWidth: 2)
+        case .path: EmptyView()
         }
     }
 }

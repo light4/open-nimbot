@@ -47,11 +47,6 @@ def parser() -> argparse.ArgumentParser:
         help="keep the connection open in seconds (default: 10)",
     )
     cli.add_argument(
-        "--test-page",
-        action="store_true",
-        help="print the printer's built-in test page (not supported by B1)",
-    )
-    cli.add_argument(
         "--test-label",
         action="store_true",
         help="print a small NIMBOT / BLE OK test label",
@@ -136,27 +131,6 @@ async def run(args: argparse.Namespace) -> int:
             print(f"Sending a {text!r} label…")
             await print_text(client, text)
             print("Label sent.")
-        if args.test_page:
-            response = asyncio.Event()
-            received = bytearray()
-
-            def on_response(_: object, data: bytearray) -> None:
-                received.extend(data)
-                response.set()
-
-            await client.start_notify(NIMBOT_CHARACTERISTIC, on_response)
-            await client.write_gatt_char(
-                NIMBOT_CHARACTERISTIC, packet(0x5A, b"\x01"), response=True
-            )
-            try:
-                await asyncio.wait_for(response.wait(), timeout=5)
-                print(f"Test-page response: {received.hex(' ')}")
-            except TimeoutError:
-                print(
-                    "Test-page command sent; printer did not return a response within 5 seconds."
-                )
-            finally:
-                await client.stop_notify(NIMBOT_CHARACTERISTIC)
         if args.hold:
             print(f"Keeping connection open for {args.hold:g} seconds…")
             await asyncio.sleep(args.hold)
@@ -170,7 +144,6 @@ def main() -> int:
         assert parser().parse_args([]).name == DEFAULT_NAME
         assert parser().parse_args(["--hold", "0"]).hold == 0
         assert parser().parse_args(["--text", "测试"]).text == "测试"
-        assert packet(0x5A, b"\x01") == bytes.fromhex("55 55 5a 01 01 5a aa aa")
         assert packet(0x01, b"\x00\x01\0\0\0\0\0") == bytes.fromhex(
             "55 55 01 07 00 01 00 00 00 00 00 07 aa aa"
         )

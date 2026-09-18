@@ -9,8 +9,6 @@ struct Printer: Identifiable {
 
 final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @Published var printers: [Printer] = []
-    @Published var status = "Bluetooth starting…"
-    @Published var media = "Label media: not read"
     @Published var mediaProfile = LabelMedia.fallback
     @Published var connectedPrinter: Printer?
 
@@ -26,17 +24,13 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        guard central.state == .poweredOn else {
-            status = "Bluetooth is \(central.state.description)."
-            return
-        }
+        guard central.state == .poweredOn else { return }
         scan()
     }
 
     func scan() {
         guard central.state == .poweredOn else { return }
         printers = []
-        status = "Scanning for B1 printers…"
         central.scanForPeripherals(withServices: nil)
     }
 
@@ -49,7 +43,6 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
 
     func connect(_ printer: Printer) {
         central.stopScan()
-        status = "Connecting to \(printer.name)…"
         central.connect(printer.peripheral)
     }
 
@@ -57,64 +50,46 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
         connectedPrinter = Printer(peripheral: peripheral)
         peripheral.delegate = self
         peripheral.discoverServices([NimbotProtocol.service])
-        status = "Connected; discovering print service…"
     }
 
-    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        status = "Could not connect: \(error?.localizedDescription ?? "unknown error")"
-    }
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {}
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         characteristic = nil
         connectedPrinter = nil
-        status = error == nil ? "Disconnected." : "Disconnected: \(error!.localizedDescription)"
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        guard let service = peripheral.services?.first(where: { $0.uuid == NimbotProtocol.service }) else {
-            status = "NIMBOT print service was not found."
-            return
-        }
+        guard let service = peripheral.services?.first(where: { $0.uuid == NimbotProtocol.service }) else { return }
         peripheral.discoverCharacteristics([NimbotProtocol.characteristic], for: service)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         characteristic = service.characteristics?.first(where: { $0.uuid == NimbotProtocol.characteristic })
-        if let characteristic {
-            status = "Preparing label media reader…"
-            peripheral.setNotifyValue(true, for: characteristic)
-        } else {
-            status = "NIMBOT print channel was not found."
-        }
+        if let characteristic { peripheral.setNotifyValue(true, for: characteristic) }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        guard error == nil, characteristic.uuid == NimbotProtocol.characteristic, characteristic.isNotifying else {
-            status = "Could not enable the NIMBOT response channel."
-            return
-        }
+        guard error == nil, characteristic.uuid == NimbotProtocol.characteristic, characteristic.isNotifying else { return }
         readMedia()
     }
 
     func readMedia() {
         guard let characteristic, let peripheral = connectedPrinter?.peripheral else { return }
         responseBuffer = Data()
-        media = "Reading label media…"
-        peripheral.writeValue(NimbotProtocol.mediaQueries()[0], for: characteristic, type: .withResponse)
+        peripheral.writeValue(NimbotProtocol.mediaQuery(), for: characteristic, type: .withResponse)
     }
 
     func print(_ canvases: [CanvasDocument]) {
         guard let characteristic else { return }
         queue = NimbotProtocol.printFrames(canvases: canvases, media: mediaProfile)
         endingPrint = true
-        status = "Sending label…"
         writeNext(to: characteristic)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        if let error {
+        if error != nil {
             queue = []
-            status = "Print failed: \(error.localizedDescription)"
             return
         }
         if !queue.isEmpty || endingPrint {
@@ -140,7 +115,6 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
                 if let profile = NimbotProtocol.mediaProfile(body) {
                     mediaProfile = profile
                 }
-                media = NimbotProtocol.mediaDescription(body)
             default:
                 break
             }
@@ -151,29 +125,14 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
         guard !queue.isEmpty else {
             if endingPrint {
                 endingPrint = false
-                status = "Printing…"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                     guard let self, let characteristic = self.characteristic else { return }
                     self.queue = [NimbotProtocol.finishPrintFrame()]
-                    self.status = "Finishing print…"
                     self.writeNext(to: characteristic)
                 }
-            } else {
-                status = "Print sent."
             }
             return
         }
         connectedPrinter?.peripheral.writeValue(queue.removeFirst(), for: characteristic, type: .withResponse)
-    }
-}
-
-private extension CBManagerState {
-    var description: String {
-        switch self {
-        case .poweredOff: "powered off"
-        case .unauthorized: "not authorized"
-        case .unsupported: "unsupported"
-        default: "unavailable"
-        }
     }
 }
