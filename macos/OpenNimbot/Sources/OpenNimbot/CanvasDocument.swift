@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import SwiftUI
 
 enum CanvasContent {
@@ -65,10 +66,22 @@ final class CanvasDocument: ObservableObject {
 
   func addImage(_ image: NSImage) {
     let layer = CanvasLayer(
-      content: .image(image), frame: CGRect(x: 24, y: 24, width: 80, height: 60),
+      content: .image(Self.grayscale(image)), frame: CGRect(x: 24, y: 24, width: 80, height: 60),
       zIndex: layers.count)
     layers.append(layer)
     selectedID = layer.id
+  }
+
+  static func grayscale(_ image: NSImage) -> NSImage {
+    guard let data = image.tiffRepresentation, let filter = CIFilter(name: "CIColorControls") else {
+      return image
+    }
+    filter.setValue(CIImage(data: data), forKey: kCIInputImageKey)
+    filter.setValue(0, forKey: kCIInputSaturationKey)
+    guard let output = filter.outputImage,
+      let cgImage = CIContext().createCGImage(output, from: output.extent)
+    else { return image }
+    return NSImage(cgImage: cgImage, size: image.size)
   }
 
   func addPath(_ points: [CGPoint]) {

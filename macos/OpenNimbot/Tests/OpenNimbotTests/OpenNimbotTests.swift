@@ -22,6 +22,19 @@ final class OpenNimbotIntegrationTests: XCTestCase {
     XCTAssertEqual(frames.filter { $0[2] == 0xE3 }.count, 1)
   }
 
+  func testColorImagesAreConvertedToGrayscale() {
+    let image = NSImage(size: NSSize(width: 2, height: 2))
+    image.lockFocus()
+    NSColor.red.setFill()
+    NSBezierPath(rect: NSRect(x: 0, y: 0, width: 2, height: 2)).fill()
+    image.unlockFocus()
+
+    let grayscale = CanvasDocument.grayscale(image)
+    let color = NSBitmapImageRep(data: grayscale.tiffRepresentation!)!.colorAt(x: 0, y: 0)!
+    XCTAssertEqual(color.redComponent, color.greenComponent, accuracy: 0.01)
+    XCTAssertEqual(color.greenComponent, color.blueComponent, accuracy: 0.01)
+  }
+
   func testCanvasEditCopyPreviewAndPrintPipeline() {
     let media = LabelMedia(barcode: "test", width: 240, height: 120, name: "test")
     let top = CanvasDocument(text: "A")
