@@ -4,89 +4,65 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var bluetooth = BluetoothManager()
-    @State private var topDocument = NSAttributedString(string: "你好，NIMBOT", attributes: [.font: NSFont.systemFont(ofSize: 24)])
-    @State private var bottomDocument = NSAttributedString(string: "第二张标签", attributes: [.font: NSFont.systemFont(ofSize: 24)])
+    @StateObject private var top = CanvasDocument(text: "你好，NIMBOT")
+    @StateObject private var bottom = CanvasDocument(text: "第二张标签")
     @State private var selectedLabel = 0
+    @State private var drawing = false
     @State private var showingImagePicker = false
 
+    private var canvas: CanvasDocument { selectedLabel == 0 ? top : bottom }
+    private var families: [String] { ["System"] + NSFontManager.shared.availableFontFamilies.sorted() }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack { Text("OpenNimbot").font(.title2.bold()); Spacer(); printerMenu }
+            Picker("Label", selection: $selectedLabel) { Text("Top").tag(0); Text("Bottom").tag(1) }.pickerStyle(.segmented)
             HStack {
-                Text("OpenNimbot").font(.title2.weight(.semibold))
-                Spacer()
-                printerMenu
+                Button("Text", action: canvas.addText)
+                Button("Image…") { showingImagePicker = true }
+                Toggle("Draw", isOn: $drawing)
+                Button("Delete", action: canvas.deleteSelected).disabled(canvas.selectedID == nil)
+                Button("Front") { canvas.moveSelected(toFront: true) }.disabled(canvas.selectedID == nil)
+                Button("Back") { canvas.moveSelected(toFront: false) }.disabled(canvas.selectedID == nil)
+                Spacer(); Text(bluetooth.mediaProfile.name).font(.caption)
             }
-            Text(bluetooth.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            Picker("Label", selection: $selectedLabel) {
-                Text("Top label").tag(0)
-                Text("Bottom label").tag(1)
+            CanvasEditor(document: canvas, size: CGSize(width: bluetooth.mediaProfile.width, height: bluetooth.mediaProfile.height), drawing: $drawing)
+                .frame(height: 280)
+            inspector
+            GroupBox("Print preview") {
+                HStack { preview("Top", top); preview("Bottom", bottom) }.padding(4)
             }
-            .pickerStyle(.segmented)
-            HStack {
-                Button("Font…") { NSFontManager.shared.orderFrontFontPanel(nil) }
-                Button("Bold", action: RichTextActions.shared.toggleBold)
-                Button("Insert image…") { showingImagePicker = true }
-                Spacer()
-                Text(bluetooth.mediaProfile.name).font(.caption).foregroundStyle(.secondary)
-            }
-            GroupBox("Canvas") {
-                RichTextEditor(document: activeDocument).frame(height: 220)
-            }
-            GroupBox("Print preview — two independent labels") {
-                HStack(spacing: 12) {
-                    preview("Top", document: topDocument)
-                    preview("Bottom", document: bottomDocument)
-                }
-                .padding(6)
-            }
-            Button("Print 2 labels") { bluetooth.print([topDocument, bottomDocument]) }
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(bluetooth.connectedPrinter == nil || topDocument.length == 0 || bottomDocument.length == 0)
+            Button("Print 2 labels") { bluetooth.print([top, bottom]) }.disabled(bluetooth.connectedPrinter == nil)
         }
-        .padding()
-        .frame(minWidth: 620, minHeight: 650)
+        .padding().frame(minWidth: 620, minHeight: 650)
         .fileImporter(isPresented: $showingImagePicker, allowedContentTypes: [.image]) { result in
-            guard case let .success(url) = result else { return }
-            guard url.startAccessingSecurityScopedResource() else { return }
+            guard case let .success(url) = result, url.startAccessingSecurityScopedResource() else { return }
             defer { url.stopAccessingSecurityScopedResource() }
-            guard let image = NSImage(contentsOf: url) else { return }
-            RichTextActions.shared.insert(image)
+            if let image = NSImage(contentsOf: url) { canvas.addImage(image) }
         }
     }
 
-    private var activeDocument: Binding<NSAttributedString> {
-        Binding(
-            get: { selectedLabel == 0 ? topDocument : bottomDocument },
-            set: { if selectedLabel == 0 { topDocument = $0 } else { bottomDocument = $0 } }
-        )
-    }
-
-    private func preview(_ title: String, document: NSAttributedString) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption.weight(.medium))
-            Image(nsImage: NimbotProtocol.preview(document: document, media: bluetooth.mediaProfile))
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: 260)
-        }
-    }
-
-    private var printerMenu: some View {
-        Menu {
-            Button("Scan printers", action: bluetooth.scan)
-            if !bluetooth.printers.isEmpty {
-                Divider()
-                ForEach(bluetooth.printers) { printer in
-                    Button(printer.name) { bluetooth.connect(printer) }
-                }
+    @ViewBuilder private var inspector: some View {
+        if let item = canvas.selected, case let .text(value) = item.content {
+            HStack {
+                TextField("Text", text: textBinding(item.id, value))
+                Picker("Font", selection: fontBinding(item.id, item.font.familyName ?? "System")) {
+                    ForEach(families, id: \.self) { Text($0) }
+                }.frame(width: 180)
+                Stepper("\(Int(item.font.pointSize)) pt", value: fontSizeBinding(item.id, item.font.pointSize), in: 8...48)
+                Toggle("Bold", isOn: boldBinding(item.id, item.bold))
             }
-            if bluetooth.connectedPrinter != nil {
-                Divider()
-                Button("Refresh label media", action: bluetooth.readMedia)
-            }
-        } label: {
-            Label(bluetooth.connectedPrinter?.name ?? "Select printer", systemImage: "printer")
         }
     }
+
+    private func preview(_ name: String, _ canvas: CanvasDocument) -> some View {
+        VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 260) }
+    }
+
+    private func textBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { text in canvas.update(id) { $0.content = .text(text) } }) }
+    private func fontBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { family in canvas.update(id) { $0.font = family == "System" ? .systemFont(ofSize: $0.font.pointSize) : NSFontManager.shared.font(withFamily: family, traits: [], weight: 5, size: $0.font.pointSize) ?? $0.font } }) }
+    private func fontSizeBinding(_ id: UUID, _ value: CGFloat) -> Binding<Double> { Binding(get: { Double(value) }, set: { size in canvas.update(id) { $0.font = NSFontManager.shared.convert($0.font, toSize: CGFloat(size)) } }) }
+    private func boldBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.bold = enabled } }) }
+
+    private var printerMenu: some View { Menu { Button("Scan", action: bluetooth.scan); ForEach(bluetooth.printers) { printer in Button(printer.name) { bluetooth.connect(printer) } }; if bluetooth.connectedPrinter != nil { Button("Refresh media", action: bluetooth.readMedia) } } label: { Label(bluetooth.connectedPrinter?.name ?? "Printer", systemImage: "printer") } }
 }

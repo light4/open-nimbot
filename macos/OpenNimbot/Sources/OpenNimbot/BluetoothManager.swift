@@ -103,9 +103,9 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
         peripheral.writeValue(NimbotProtocol.mediaQueries()[0], for: characteristic, type: .withResponse)
     }
 
-    func print(_ labels: [NSAttributedString]) {
-        guard let characteristic, labels.allSatisfy({ $0.length > 0 }) else { return }
-        queue = NimbotProtocol.printFrames(labels: labels, media: mediaProfile)
+    func print(_ canvases: [CanvasDocument]) {
+        guard let characteristic else { return }
+        queue = NimbotProtocol.printFrames(canvases: canvases, media: mediaProfile)
         endingPrint = true
         status = "Sending label…"
         writeNext(to: characteristic)

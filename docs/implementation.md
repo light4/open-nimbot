@@ -65,15 +65,16 @@ open dist/OpenNimbot.app
 | 文件 | 职责 |
 | --- | --- |
 | `OpenNimbotApp.swift` | SwiftUI 应用入口。 |
-| `ContentView.swift` | 设备选择、画布选择、系统字体操作、图片插入和打印预览。 |
-| `RichTextEditor.swift` | AppKit `NSTextView` 富文本画布桥接。 |
+| `ContentView.swift` | 设备选择、画布选择、图层检查器和打印预览。 |
+| `CanvasDocument.swift` | 标签画布与文本、图片、路径图层模型。 |
+| `CanvasEditor.swift` | 图层选择、移动、缩放和自由路径绘制。 |
 | `BluetoothManager.swift` | CoreBluetooth 扫描、连接、通知处理与打印传输队列。 |
-| `NimbotProtocol.swift` | B1 V4 报文、RFID 解析和富文本/图片栅格编码。 |
+| `NimbotProtocol.swift` | B1 V4 报文、RFID 解析和画布栅格编码。 |
 | `LabelMedia.swift` | 标签介质尺寸模型。 |
 
 App 连接后会自动读取 RFID，并显示标签条码、序列号、介质类型与已用/总长度。介质类型 `1` 表示有间隙标签。条码 `6971501227682` 已映射为 30 × 15 mm / 2R 标签，即 203 dpi 下单张 240 × 120 px。2R 的上下两张是独立标签；App 分别编辑、预览，并作为两个页面一次打印。
 
-富文本画布使用 macOS 原生 `NSTextView`：点击 **Font…** 打开系统字体面板，可使用系统安装的字体和字体样式；选中文字后可点击 **Bold**；图片可通过 **Insert image…** 插入，也可粘贴或拖进画布。预览和打印共用同一富文本栅格化结果。
+画布将文本、图片和自由路径保存为独立图层。文本图层可从 macOS 已安装字体中选择字体、字号和粗体；图片通过 **Image…** 插入。选择图层后可拖拽移动、双指缩放、置前、置后或删除；开启 **Draw** 可绘制路径。画布、预览和打印共用同一个 Core Graphics 栅格渲染器。
 
 ## 已知限制
 
