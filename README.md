@@ -34,7 +34,9 @@ open dist/OpenNimbot.app
 ```text
 src/nimbot_connect.py       BLE 协议验证与命令行打印脚本
 macos/OpenNimbot/           SwiftUI + CoreBluetooth 原生 macOS App
-macos/OpenNimbot/Sources/OpenNimbot/NimbotProtocol.swift  独立的 B1 V4 协议和栅格编码
+macos/OpenNimbot/Sources/OpenNimbot/ContentView.swift       界面与预览
+macos/OpenNimbot/Sources/OpenNimbot/BluetoothManager.swift  BLE 扫描、连接和传输
+macos/OpenNimbot/Sources/OpenNimbot/NimbotProtocol.swift    B1 V4 协议和栅格编码
 docs/implementation.md      Python 版协议、命令和限制说明
 ```
 
