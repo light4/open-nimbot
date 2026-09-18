@@ -75,9 +75,20 @@ final class CanvasDocument: ObservableObject {
         selectedID = nil
     }
 
+    func move(_ id: UUID, by offset: CGSize) {
+        update(id) { $0.frame.origin.x += offset.width; $0.frame.origin.y += offset.height }
+    }
+
+    func resize(_ id: UUID, by offset: CGSize) {
+        update(id) {
+            $0.frame.size.width = max(12, $0.frame.width + offset.width)
+            $0.frame.size.height = max(12, $0.frame.height + offset.height)
+        }
+    }
+
     func nudgeSelected(x: CGFloat, y: CGFloat) {
         guard let selectedID else { return }
-        update(selectedID) { $0.frame.origin.x += x; $0.frame.origin.y += y }
+        move(selectedID, by: CGSize(width: x, height: y))
     }
 
     func deleteSelected() {

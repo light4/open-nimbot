@@ -97,29 +97,34 @@ private struct CanvasLayerView: View {
                 DragGesture()
                     .onChanged { dragOffset = $0.translation }
                     .onEnded { value in
-                        document.update(layer.id) {
-                            $0.frame.origin.x += value.translation.width / scale
-                            $0.frame.origin.y += value.translation.height / scale
-                        }
+                        document.move(
+                            layer.id,
+                            by: CGSize(
+                                width: value.translation.width / scale,
+                                height: value.translation.height / scale
+                            )
+                        )
                         dragOffset = .zero
                     }
             )
-            .position(
-                x: layer.frame.midX * scale + dragOffset.width + resizeOffset.width / 2,
-                y: layer.frame.midY * scale + dragOffset.height + resizeOffset.height / 2
+            .offset(
+                x: layer.frame.minX * scale + dragOffset.width,
+                y: layer.frame.minY * scale + dragOffset.height
             )
+            .transaction { $0.animation = nil }
     }
 
     private var resizeGesture: some Gesture {
         DragGesture().onChanged { value in
             resizeOffset = value.translation
         }.onEnded { value in
-            document.update(layer.id) {
-                $0.frame.size = CGSize(
-                    width: max(12, $0.frame.width + value.translation.width / scale),
-                    height: max(12, $0.frame.height + value.translation.height / scale)
+            document.resize(
+                layer.id,
+                by: CGSize(
+                    width: value.translation.width / scale,
+                    height: value.translation.height / scale
                 )
-            }
+            )
             resizeOffset = .zero
         }
     }
