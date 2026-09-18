@@ -62,10 +62,9 @@ private struct CanvasLayerView: View {
     var body: some View {
         content
             .frame(width: max(1, layer.frame.width * scale), height: max(1, layer.frame.height * scale), alignment: .topLeading)
-            .position(x: layer.frame.midX * scale, y: layer.frame.midY * scale)
             .overlay {
                 if document.selectedID == layer.id {
-                    Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    Rectangle().inset(by: -3).stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     Circle()
                         .fill(.blue)
                         .frame(width: 10, height: 10)
@@ -80,6 +79,7 @@ private struct CanvasLayerView: View {
                 if dragOrigin == nil { dragOrigin = layer.frame.origin }
                 document.update(layer.id) { $0.frame.origin = CGPoint(x: dragOrigin!.x + value.translation.width / scale, y: dragOrigin!.y + value.translation.height / scale) }
             }.onEnded { _ in dragOrigin = nil })
+            .position(x: layer.frame.midX * scale, y: layer.frame.midY * scale)
     }
 
     private var resizeGesture: some Gesture {

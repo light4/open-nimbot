@@ -28,20 +28,24 @@ struct ContentView: View {
                 Spacer()
                 Text("Editing \(activeName) · \(bluetooth.mediaProfile.name)").font(.caption)
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    labelCanvas("Top label", document: top, index: 0)
-                    Divider()
-                    labelCanvas("Bottom label", document: bottom, index: 1)
-                    inspector
-                    GroupBox("Print preview — physical top / bottom layout") {
-                        VStack(spacing: 12) { preview("Top", top); preview("Bottom", bottom) }.padding(4)
+            HStack(alignment: .top, spacing: 14) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        labelCanvas("Top label", document: top, index: 0)
+                        Divider()
+                        labelCanvas("Bottom label", document: bottom, index: 1)
+                        inspector
                     }
                 }
+                .frame(maxWidth: .infinity)
+                GroupBox("Print preview") {
+                    VStack(spacing: 12) { preview("Top", top); preview("Bottom", bottom) }.padding(4)
+                }
+                .frame(width: 230)
             }
             Button("Print label pair") { bluetooth.print([top, bottom]) }.disabled(bluetooth.connectedPrinter == nil)
         }
-        .padding().frame(minWidth: 620, minHeight: 650)
+        .padding().frame(minWidth: 760, minHeight: 650)
         .fileImporter(isPresented: $showingImagePicker, allowedContentTypes: [.image]) { result in
             guard case let .success(url) = result, url.startAccessingSecurityScopedResource() else { return }
             defer { url.stopAccessingSecurityScopedResource() }
@@ -71,7 +75,7 @@ struct ContentView: View {
     }
 
     private func preview(_ name: String, _ canvas: CanvasDocument) -> some View {
-        VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 300) }
+        VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 210) }
     }
 
     private func textBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { text in canvas.update(id) { $0.content = .text(text) }; canvas.fitText(id) }) }
