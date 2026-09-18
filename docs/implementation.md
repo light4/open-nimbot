@@ -1,6 +1,6 @@
 # NIMBOT B1 蓝牙打印
 
-`nimbot_connect.py` 用 macOS 蓝牙低功耗（BLE）连接并打印 NIMBOT B1 标签机。
+[`../src/nimbot_connect.py`](../src/nimbot_connect.py) 用 macOS 蓝牙低功耗（BLE）连接并打印 NIMBOT B1 标签机。
 
 ## 前提
 
@@ -12,23 +12,23 @@
 
 ```bash
 # 列出附近 BLE 设备
-./nimbot_connect.py --list
+./src/nimbot_connect.py --list
 
 # 连接打印机，列出其 GATT 服务后断开
-./nimbot_connect.py --hold 0
+./src/nimbot_connect.py --hold 0
 
 # 内建测试标签
-./nimbot_connect.py --test-label --hold 0
+./src/nimbot_connect.py --test-label --hold 0
 
 # 打印英文或中文；$'...' 可输入换行
-./nimbot_connect.py --text '你好，NIMBOT' --hold 0
-./nimbot_connect.py --text $'订单 12345\nBLE 打印成功' --hold 0
+./src/nimbot_connect.py --text '你好，NIMBOT' --hold 0
+./src/nimbot_connect.py --text $'订单 12345\nBLE 打印成功' --hold 0
 ```
 
 默认设备名是 `B1-G801041103`。若广播名称变化，使用 `--name` 指定：
 
 ```bash
-./nimbot_connect.py --name 'B1-实际名称' --text '测试' --hold 0
+./src/nimbot_connect.py --name 'B1-实际名称' --text '测试' --hold 0
 ```
 
 ## 参数
@@ -42,6 +42,13 @@
 | `--hold 秒数` | 打印或连接后保持连接的时间；批处理时用 `0`。 |
 | `--timeout 秒数` | 扫描和连接超时，默认 10 秒。 |
 | `--self-check` | 运行离线协议及命令行自检。 |
+
+## 实现细节
+
+- 扫描和连接使用 `bleak`；B1 的可写 GATT 特征是 `bef8d6c9-9c21-4c9e-b632-bd58c1009f9f`。
+- 命令帧格式为 `55 55 <命令> <长度> <数据> <XOR 校验> AA AA`。
+- B1 使用 NIMBOT V4 流程：设置浓度/标签类型、开始任务和页面、传输单色栅格行、结束页面和任务。
+- 文本由 Pillow 渲染为 160 px 宽的 1-bit 位图；macOS 优先使用 `Hiragino Sans GB` 以显示中文。
 
 ## 已知限制
 
