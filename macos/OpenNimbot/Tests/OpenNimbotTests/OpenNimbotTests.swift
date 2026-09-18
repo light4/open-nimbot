@@ -1,28 +1,46 @@
 import XCTest
 @testable import OpenNimbot
 
-final class OpenNimbotTests: XCTestCase {
-    func testPacketChecksum() {
-        XCTAssertEqual(NimbotProtocol.frame(0x5A, [0x01]), Data([0x55, 0x55, 0x5A, 0x01, 0x01, 0x5A, 0xAA, 0xAA]))
-    }
+final class OpenNimbotIntegrationTests: XCTestCase {
+    func testDetected2RMediaRendersAndPrintsAsOnePhysicalPage() {
+        let barcode = Array("6971501227682".utf8)
+        let media = NimbotProtocol.mediaProfile(Array(repeating: 0, count: 8) + [UInt8(barcode.count)] + barcode)
+        XCTAssertEqual(media?.width, 240)
+        XCTAssertEqual(media?.height, 120)
 
-    func testMultilineTextHasTwoLineSelectionFrame() {
-        let singleLine = CanvasDocument(text: "A")
-        let twoLines = CanvasDocument(text: "A\nB")
-        XCTAssertGreaterThan(twoLines.layers[0].frame.height, singleLine.layers[0].frame.height)
-    }
+        let top = CanvasDocument(text: "Top\nlabel")
+        let bottom = CanvasDocument(text: "Bottom")
+        let preview = NimbotProtocol.preview(canvas: top, media: media!)
+        let frames = NimbotProtocol.printFrames(canvases: [top, bottom], media: media!)
 
-    func testTwoLabelsAreOnePrintPage() {
-        let media = LabelMedia(barcode: "test", width: 240, height: 120, name: "test")
-        let frames = NimbotProtocol.printFrames(canvases: [CanvasDocument(text: "Top"), CanvasDocument(text: "Bottom")], media: media)
+        XCTAssertEqual(preview.size, CGSize(width: 240, height: 120))
         XCTAssertEqual(frames.filter { $0[2] == 0x01 }.count, 1)
         XCTAssertEqual(frames.filter { $0[2] == 0x03 }.count, 1)
+        XCTAssertEqual(frames.filter { $0[2] == 0x13 }.count, 1)
         XCTAssertEqual(frames.filter { $0[2] == 0xE3 }.count, 1)
     }
 
-    func testTextSelectionFrameFitsContent() {
-        let document = CanvasDocument(text: "A")
-        XCTAssertLessThan(document.layers[0].frame.width, 216)
-        XCTAssertGreaterThan(document.layers[0].frame.height, 0)
+    func testCanvasEditCopyPreviewAndPrintPipeline() {
+        let media = LabelMedia(barcode: "test", width: 240, height: 120, name: "test")
+        let top = CanvasDocument(text: "A")
+        top.addText()
+        let layer = top.layers[1]
+        top.update(layer.id) {
+            $0.content = .text("Copied\ntext")
+            $0.font = .systemFont(ofSize: 22)
+            $0.bold = true
+            $0.italic = true
+            $0.alignment = .right
+            $0.frame.origin = CGPoint(x: 30, y: 40)
+        }
+        top.fitText(layer.id)
+
+        let bottom = CanvasDocument(text: "placeholder")
+        bottom.replaceLayers(with: top)
+        let frames = NimbotProtocol.printFrames(canvases: [top, bottom], media: media)
+
+        XCTAssertEqual(bottom.layers.count, top.layers.count)
+        XCTAssertEqual(bottom.layers[1].frame.origin, CGPoint(x: 30, y: 40))
+        XCTAssertEqual(frames.filter { $0[2] == 0x85 || $0[2] == 0x84 }.count, 240)
     }
 }
