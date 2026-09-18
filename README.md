@@ -21,11 +21,13 @@
 ```bash
 cd macos/OpenNimbot
 open Package.swift       # 用 Xcode 打开
-# 或直接构建、运行
-swift run
+
+# 生成可直接打开的 .app Bundle
+uv run scripts/build_app.py
+open dist/OpenNimbot.app
 ```
 
-它可扫描和连接 B1 打印机、输入中英文多行文字，并打印标签。
+它可扫描和连接 B1 打印机、输入中英文多行文字，并打印标签。构建脚本会进行 ad-hoc 签名；如需分发给其他电脑，仍需 Apple Developer ID 公证。
 
 ## 项目结构
 
