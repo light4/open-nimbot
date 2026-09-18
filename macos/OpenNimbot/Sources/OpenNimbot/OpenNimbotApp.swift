@@ -21,10 +21,12 @@ struct Printer: Identifiable {
 final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @Published var printers: [Printer] = []
     @Published var status = "Bluetooth starting…"
+    @Published var media = "Label media: not read"
     @Published var connectedPrinter: Printer?
 
     private var central: CBCentralManager!
     private var characteristic: CBCharacteristic?
+    private var responseBuffer = Data()
     private var queue: [Data] = []
     private var endingPrint = false
 
@@ -88,7 +90,21 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         characteristic = service.characteristics?.first(where: { $0.uuid == nimbotCharacteristic })
-        status = characteristic == nil ? "NIMBOT print channel was not found." : "Ready to print."
+        if let characteristic {
+            peripheral.setNotifyValue(true, for: characteristic)
+            status = "Ready to print."
+        } else {
+            status = "NIMBOT print channel was not found."
+        }
+    }
+
+    func readMedia() {
+        guard let characteristic, let peripheral = connectedPrinter?.peripheral else { return }
+        responseBuffer = Data()
+        media = "Reading label media…"
+        peripheral.writeValue(frame(0x1A, [0x01]), for: characteristic, type: .withResponse)
+        peripheral.writeValue(frame(0x40, [0x03]), for: characteristic, type: .withResponse)
+        peripheral.writeValue(frame(0x40, [0x0F]), for: characteristic, type: .withResponse)
     }
 
     func print(_ text: String) {
@@ -124,7 +140,46 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
             status = "Print failed: \(error.localizedDescription)"
             return
         }
-        writeNext(to: characteristic)
+        if !queue.isEmpty || endingPrint {
+            writeNext(to: characteristic)
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic.uuid == nimbotCharacteristic, let value = characteristic.value else { return }
+        responseBuffer.append(value)
+        while responseBuffer.count >= 7 {
+            guard responseBuffer[responseBuffer.startIndex] == 0x55, responseBuffer[responseBuffer.startIndex + 1] == 0x55 else {
+                responseBuffer.removeFirst()
+                continue
+            }
+            let length = Int(responseBuffer[responseBuffer.startIndex + 3])
+            let packetLength = length + 7
+            guard responseBuffer.count >= packetLength else { return }
+            let packet = responseBuffer.prefix(packetLength)
+            responseBuffer.removeFirst(packetLength)
+            let command = packet[packet.startIndex + 2]
+            let body = Array(packet.dropFirst(4).dropLast(3))
+            switch command {
+            case 0x2A:
+                media = rfidDescription(body)
+            case 0x43:
+                media += " · type \(body.first ?? 0)"
+            case 0x4F:
+                media += " · area \(body.map { String(format: "%02X", $0) }.joined())"
+            default:
+                break
+            }
+        }
+    }
+
+    private func rfidDescription(_ data: [UInt8]) -> String {
+        guard data.count > 9 else { return "No readable label RFID (\(data.map { String(format: "%02X", $0) }.joined()))" }
+        let uuid = data.prefix(8).map { String(format: "%02X", $0) }.joined()
+        let barcodeLength = Int(data[8])
+        guard data.count > 9 + barcodeLength else { return "Label RFID \(uuid)" }
+        let barcode = String(decoding: data[9..<(9 + barcodeLength)], as: UTF8.self)
+        return "Label RFID \(uuid) · barcode \(barcode)"
     }
 
     private func writeNext(to characteristic: CBCharacteristic) {
@@ -202,10 +257,13 @@ struct ContentView: View {
             Text(bluetooth.status).foregroundStyle(.secondary)
             HStack {
                 Button("Scan", action: bluetooth.scan)
+                Button("Read label media", action: bluetooth.readMedia)
+                    .disabled(bluetooth.connectedPrinter == nil)
                 if let printer = bluetooth.connectedPrinter {
                     Text("Connected: \(printer.name)")
                 }
             }
+            Text(bluetooth.media).font(.caption).textSelection(.enabled)
             List(bluetooth.printers) { printer in
                 HStack {
                     Text(printer.name)
