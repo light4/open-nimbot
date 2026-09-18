@@ -1,12 +1,13 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var bluetooth = BluetoothManager()
-    @State private var topText = "你好，NIMBOT"
-    @State private var bottomText = "第二张标签"
-    @State private var fontName = "System"
-    @State private var fontSize = 24.0
-    private let fontNames = ["System", "Hiragino Sans GB", "Songti SC", "Menlo"]
+    @State private var topDocument = NSAttributedString(string: "你好，NIMBOT", attributes: [.font: NSFont.systemFont(ofSize: 24)])
+    @State private var bottomDocument = NSAttributedString(string: "第二张标签", attributes: [.font: NSFont.systemFont(ofSize: 24)])
+    @State private var selectedLabel = 0
+    @State private var showingImagePicker = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -16,51 +17,58 @@ struct ContentView: View {
                 printerMenu
             }
             Text(bluetooth.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            HStack(spacing: 12) {
-                labelEditor("Top label", text: $topText)
-                labelEditor("Bottom label", text: $bottomText)
+            Picker("Label", selection: $selectedLabel) {
+                Text("Top label").tag(0)
+                Text("Bottom label").tag(1)
             }
+            .pickerStyle(.segmented)
             HStack {
-                Picker("Font", selection: $fontName) {
-                    ForEach(fontNames, id: \.self) { Text($0) }
-                }
-                .pickerStyle(.menu)
-                Stepper("Size: \(Int(fontSize))", value: $fontSize, in: 10...48, step: 1)
+                Button("Font…") { NSFontManager.shared.orderFrontFontPanel(nil) }
+                Button("Bold", action: RichTextActions.shared.toggleBold)
+                Button("Insert image…") { showingImagePicker = true }
                 Spacer()
                 Text(bluetooth.mediaProfile.name).font(.caption).foregroundStyle(.secondary)
             }
-            GroupBox("Preview — two independent labels") {
-                VStack(spacing: 12) {
-                    preview("Top", text: topText)
-                    preview("Bottom", text: bottomText)
+            GroupBox("Canvas") {
+                RichTextEditor(document: activeDocument).frame(height: 220)
+            }
+            GroupBox("Print preview — two independent labels") {
+                HStack(spacing: 12) {
+                    preview("Top", document: topDocument)
+                    preview("Bottom", document: bottomDocument)
                 }
                 .padding(6)
             }
-            Button("Print 2 labels") {
-                bluetooth.print([topText, bottomText], fontName: fontName, fontSize: fontSize)
-            }
-            .keyboardShortcut(.return, modifiers: .command)
-            .disabled(bluetooth.connectedPrinter == nil || topText.isEmpty || bottomText.isEmpty)
+            Button("Print 2 labels") { bluetooth.print([topDocument, bottomDocument]) }
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(bluetooth.connectedPrinter == nil || topDocument.length == 0 || bottomDocument.length == 0)
         }
         .padding()
-        .frame(minWidth: 600, minHeight: 650)
-    }
-
-    private func labelEditor(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption.weight(.medium))
-            TextEditor(text: text).font(.system(size: 16)).frame(height: 70)
+        .frame(minWidth: 620, minHeight: 650)
+        .fileImporter(isPresented: $showingImagePicker, allowedContentTypes: [.image]) { result in
+            guard case let .success(url) = result else { return }
+            guard url.startAccessingSecurityScopedResource() else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+            guard let image = NSImage(contentsOf: url) else { return }
+            RichTextActions.shared.insert(image)
         }
     }
 
-    private func preview(_ title: String, text: String) -> some View {
+    private var activeDocument: Binding<NSAttributedString> {
+        Binding(
+            get: { selectedLabel == 0 ? topDocument : bottomDocument },
+            set: { if selectedLabel == 0 { topDocument = $0 } else { bottomDocument = $0 } }
+        )
+    }
+
+    private func preview(_ title: String, document: NSAttributedString) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption.weight(.medium))
-            Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize, media: bluetooth.mediaProfile))
+            Image(nsImage: NimbotProtocol.preview(document: document, media: bluetooth.mediaProfile))
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: 320)
+                .frame(width: 260)
         }
     }
 

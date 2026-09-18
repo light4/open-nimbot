@@ -9,13 +9,13 @@ enum NimbotProtocol {
         [frame(0x1A, [0x01])]
     }
 
-    static func printFrames(labels: [String], fontName: String, fontSize: CGFloat, media: LabelMedia) -> [Data] {
+    static func printFrames(labels: [NSAttributedString], media: LabelMedia) -> [Data] {
         var frames = [
             frame(0x21, [0x03]), frame(0x23, [0x01]),
             frame(0x01, uint16(labels.count) + [0, 0, 0, 0, 0]),
         ]
         for text in labels {
-            let rows = rasterRows(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
+            let rows = rasterRows(document: text, width: media.width, height: media.height)
             frames += [frame(0x03, [0x01]), frame(0x13, uint16(rows.count) + uint16(media.width) + [0, 1])]
             for (y, row) in rows.enumerated() {
                 if row.allSatisfy({ $0 == 0 }) {
@@ -36,8 +36,8 @@ enum NimbotProtocol {
 
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
 
-    static func preview(text: String, fontName: String, fontSize: CGFloat, media: LabelMedia) -> NSImage {
-        let bitmap = renderBitmap(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
+    static func preview(document: NSAttributedString, media: LabelMedia) -> NSImage {
+        let bitmap = renderBitmap(document: document, width: media.width, height: media.height)
         let image = NSImage(size: bitmap.size)
         image.addRepresentation(bitmap)
         return image
@@ -83,8 +83,8 @@ enum NimbotProtocol {
         [UInt8(value >> 8), UInt8(value & 0xff)]
     }
 
-    private static func rasterRows(text: String, width: Int, height: Int, fontName: String, fontSize: CGFloat) -> [[UInt8]] {
-        let bitmap = renderBitmap(text: text, width: width, height: height, fontName: fontName, fontSize: fontSize)
+    private static func rasterRows(document: NSAttributedString, width: Int, height: Int) -> [[UInt8]] {
+        let bitmap = renderBitmap(document: document, width: width, height: height)
         return (0..<bitmap.pixelsHigh).map { y in
             stride(from: 0, to: width, by: 8).map { x in
                 (0..<8).reduce(0) { byte, bit in
@@ -95,9 +95,7 @@ enum NimbotProtocol {
         }
     }
 
-    private static func renderBitmap(text: String, width: Int, height: Int, fontName: String, fontSize: CGFloat) -> NSBitmapImageRep {
-        let font = fontName == "System" ? NSFont.systemFont(ofSize: fontSize) : NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
-        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
+    private static func renderBitmap(document: NSAttributedString, width: Int, height: Int) -> NSBitmapImageRep {
         let size = NSSize(width: width, height: height)
         let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,
@@ -116,10 +114,7 @@ enum NimbotProtocol {
         NSGraphicsContext.current = context
         NSColor.white.setFill()
         NSBezierPath(rect: NSRect(origin: .zero, size: size)).fill()
-        (text as NSString).draw(
-            in: NSRect(x: 12, y: 12, width: size.width - 24, height: size.height - 24),
-            withAttributes: attributes
-        )
+        document.draw(in: NSRect(x: 12, y: 12, width: size.width - 24, height: size.height - 24))
         NSGraphicsContext.restoreGraphicsState()
         return bitmap
     }
