@@ -55,7 +55,7 @@ private struct CanvasLayerView: View {
     let layer: CanvasLayer
     @ObservedObject var document: CanvasDocument
     let scale: CGFloat
-    @State private var dragOrigin: CGPoint?
+    @GestureState private var dragTranslation = CGSize.zero
     @State private var resizeFrame: CGRect?
     @State private var resizeFont: NSFont?
 
@@ -70,16 +70,25 @@ private struct CanvasLayerView: View {
                         .frame(width: 10, height: 10)
                         .offset(x: 5, y: 5)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                        .gesture(resizeGesture)
+                        .highPriorityGesture(resizeGesture)
                 }
             }
             .contentShape(Rectangle())
             .onTapGesture { document.selectedID = layer.id }
-            .gesture(DragGesture().onChanged { value in
-                if dragOrigin == nil { dragOrigin = layer.frame.origin }
-                document.update(layer.id) { $0.frame.origin = CGPoint(x: dragOrigin!.x + value.translation.width / scale, y: dragOrigin!.y + value.translation.height / scale) }
-            }.onEnded { _ in dragOrigin = nil })
-            .position(x: layer.frame.midX * scale, y: layer.frame.midY * scale)
+            .gesture(
+                DragGesture()
+                    .updating($dragTranslation) { value, state, _ in state = value.translation }
+                    .onEnded { value in
+                        document.update(layer.id) {
+                            $0.frame.origin.x += value.translation.width / scale
+                            $0.frame.origin.y += value.translation.height / scale
+                        }
+                    }
+            )
+            .position(
+                x: layer.frame.midX * scale + dragTranslation.width,
+                y: layer.frame.midY * scale + dragTranslation.height
+            )
     }
 
     private var resizeGesture: some Gesture {
