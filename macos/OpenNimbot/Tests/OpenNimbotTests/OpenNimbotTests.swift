@@ -6,6 +6,12 @@ final class OpenNimbotTests: XCTestCase {
         XCTAssertEqual(NimbotProtocol.frame(0x5A, [0x01]), Data([0x55, 0x55, 0x5A, 0x01, 0x01, 0x5A, 0xAA, 0xAA]))
     }
 
+    func testMultilineTextHasTwoLineSelectionFrame() {
+        let singleLine = CanvasDocument(text: "A")
+        let twoLines = CanvasDocument(text: "A\nB")
+        XCTAssertGreaterThan(twoLines.layers[0].frame.height, singleLine.layers[0].frame.height)
+    }
+
     func testTwoLabelsAreOnePrintPage() {
         let media = LabelMedia(barcode: "test", width: 240, height: 120, name: "test")
         let frames = NimbotProtocol.printFrames(canvases: [CanvasDocument(text: "Top"), CanvasDocument(text: "Bottom")], media: media)

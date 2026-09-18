@@ -63,18 +63,20 @@ struct ContentView: View {
 
     @ViewBuilder private var inspector: some View {
         if let item = canvas.selected, case let .text(value) = item.content {
-            HStack {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("\(activeName) text").font(.caption)
-                TextField("Text", text: textBinding(item.id, value))
-                Picker("Font", selection: fontBinding(item.id, item.font.familyName ?? "System")) { ForEach(families, id: \.self) { Text($0) } }.frame(width: 180)
-                Stepper("\(Int(item.font.pointSize)) pt", value: fontSizeBinding(item.id, item.font.pointSize), in: 8...48)
-                Toggle("Bold", isOn: boldBinding(item.id, item.bold))
-                Toggle("Italic", isOn: italicBinding(item.id, item.italic))
-                Picker("Align", selection: alignmentBinding(item.id, item.alignment)) {
-                    Text("Left").tag(NSTextAlignment.left)
-                    Text("Center").tag(NSTextAlignment.center)
-                    Text("Right").tag(NSTextAlignment.right)
-                }.pickerStyle(.segmented).frame(width: 150)
+                TextEditor(text: textBinding(item.id, value)).frame(height: 54)
+                HStack {
+                    Picker("Font", selection: fontBinding(item.id, item.font.familyName ?? "System")) { ForEach(families, id: \.self) { Text($0) } }.frame(width: 180)
+                    Stepper("\(Int(item.font.pointSize)) pt", value: fontSizeBinding(item.id, item.font.pointSize), in: 8...48)
+                    Toggle("Bold", isOn: boldBinding(item.id, item.bold))
+                    Toggle("Italic", isOn: italicBinding(item.id, item.italic))
+                    Picker("Align", selection: alignmentBinding(item.id, item.alignment)) {
+                        Text("Left").tag(NSTextAlignment.left)
+                        Text("Center").tag(NSTextAlignment.center)
+                        Text("Right").tag(NSTextAlignment.right)
+                    }.pickerStyle(.segmented).frame(width: 150)
+                }
             }
         }
     }

@@ -47,7 +47,11 @@ final class CanvasDocument: ObservableObject {
         var font = layers[index].font
         if layers[index].bold { font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) }
         if layers[index].italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
-        let size = CGRect(origin: .zero, size: (text as NSString).size(withAttributes: [.font: font])).integral.size
+        let size = (text as NSString).boundingRect(
+            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font]
+        ).integral.size
         layers[index].frame.size = CGSize(width: max(1, size.width + 8), height: max(1, size.height + 6))
     }
 
