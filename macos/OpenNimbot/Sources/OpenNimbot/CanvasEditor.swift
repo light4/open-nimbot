@@ -80,11 +80,14 @@ private struct CanvasLayerView: View {
             .overlay {
                 if document.selectedID == layer.id {
                     Rectangle().inset(by: -3).stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if document.selectedID == layer.id {
                     Circle()
                         .fill(.blue)
-                        .frame(width: 10, height: 10)
-                        .offset(x: 5, y: 5)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .frame(width: 14, height: 14)
+                        .contentShape(Circle())
                         .highPriorityGesture(resizeGesture)
                 }
             }
