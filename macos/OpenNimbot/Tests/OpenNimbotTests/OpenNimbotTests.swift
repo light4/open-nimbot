@@ -35,6 +35,24 @@ final class OpenNimbotIntegrationTests: XCTestCase {
     XCTAssertEqual(color.greenComponent, color.blueComponent, accuracy: 0.01)
   }
 
+  func testGrayscaleImagesAreDitheredForPrinting() {
+    let media = LabelMedia(barcode: "test", width: 16, height: 16, name: "test")
+    let canvas = CanvasDocument(text: "")
+    let image = NSImage(size: NSSize(width: 2, height: 2))
+    image.lockFocus()
+    NSColor(calibratedWhite: 0.5, alpha: 1).setFill()
+    NSBezierPath(rect: NSRect(x: 0, y: 0, width: 2, height: 2)).fill()
+    image.unlockFocus()
+    canvas.addImage(image)
+    canvas.update(canvas.layers[1].id) {
+      $0.frame = CGRect(x: 0, y: 0, width: media.width, height: media.height)
+    }
+
+    let rows = NimbotProtocol.printFrames(canvases: [canvas], media: media).filter { $0[2] == 0x85 }
+    let blackPixels = rows.flatMap { $0[10..<12] }.reduce(0) { $0 + $1.nonzeroBitCount }
+    XCTAssertTrue((96...160).contains(blackPixels))
+  }
+
   func testCanvasEditCopyPreviewAndPrintPipeline() {
     let media = LabelMedia(barcode: "test", width: 240, height: 120, name: "test")
     let top = CanvasDocument(text: "A")

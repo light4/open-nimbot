@@ -58,13 +58,28 @@ enum NimbotProtocol {
 
   private static func rasterRows(canvas: CanvasDocument, media: LabelMedia) -> [[UInt8]] {
     let bitmap = renderBitmap(canvas: canvas, media: media)
+    var errors = [Double](repeating: 0, count: media.width + 2)
     return (0..<media.height).map { y in
-      stride(from: 0, to: media.width, by: 8).map { x in
-        (0..<8).reduce(0) { byte, bit in
-          let pixel = bitmap.colorAt(x: x + bit, y: y) ?? .white
-          return byte | (pixel.brightnessComponent < 0.5 ? 1 << (7 - bit) : 0)
-        }
+      var nextErrors = [Double](repeating: 0, count: media.width + 2)
+      var row = [UInt8](repeating: 0, count: (media.width + 7) / 8)
+      for x in 0..<media.width {
+        let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) ?? .white
+        let alpha = Double(pixel.alphaComponent)
+        let red = 0.2126 * Double(pixel.redComponent)
+        let green = 0.7152 * Double(pixel.greenComponent)
+        let blue = 0.0722 * Double(pixel.blueComponent)
+        let luminance = red + green + blue
+        let value = min(1, max(0, 1 - alpha + alpha * luminance + errors[x + 1]))
+        let black = value < 0.5
+        if black { row[x / 8] |= 1 << (7 - x % 8) }
+        let error = value - (black ? 0 : 1)
+        errors[x + 2] += error * 7 / 16
+        nextErrors[x] += error * 3 / 16
+        nextErrors[x + 1] += error * 5 / 16
+        nextErrors[x + 2] += error / 16
       }
+      errors = nextErrors
+      return row
     }
   }
 
