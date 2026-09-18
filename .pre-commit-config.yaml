@@ -13,6 +13,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^src/.*\.py$
+      - id: swift-format
+        name: Swift format
+        entry: xcrun swift-format lint --strict --recursive macos/OpenNimbot/Sources macos/OpenNimbot/Tests macos/OpenNimbot/Package.swift
+        language: system
+        pass_filenames: false
+        files: ^macos/OpenNimbot/.*\.swift$
       - id: macos-tests
         name: macOS app tests
         entry: swift test --package-path macos/OpenNimbot
