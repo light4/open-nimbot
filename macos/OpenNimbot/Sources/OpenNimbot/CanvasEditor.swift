@@ -5,6 +5,7 @@ struct CanvasEditor: View {
     @ObservedObject var document: CanvasDocument
     let size: CGSize
     @Binding var drawing: Bool
+    let onActivate: () -> Void
     @State private var stroke: [CGPoint] = []
 
     var body: some View {
@@ -27,6 +28,7 @@ struct CanvasEditor: View {
                 }
             }
             .contentShape(Rectangle())
+            .simultaneousGesture(TapGesture().onEnded(onActivate))
             .gesture(DragGesture(minimumDistance: 0).onChanged { value in
                 guard drawing else { return }
                 stroke.append(CGPoint(x: value.location.x / scale, y: value.location.y / scale))

@@ -11,12 +11,12 @@ struct ContentView: View {
     @State private var showingImagePicker = false
 
     private var canvas: CanvasDocument { selectedLabel == 0 ? top : bottom }
+    private var activeName: String { selectedLabel == 0 ? "Top" : "Bottom" }
     private var families: [String] { ["System"] + NSFontManager.shared.availableFontFamilies.sorted() }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack { Text("OpenNimbot").font(.title2.bold()); Spacer(); printerMenu }
-            Picker("Label", selection: $selectedLabel) { Text("Top").tag(0); Text("Bottom").tag(1) }.pickerStyle(.segmented)
             HStack {
                 Button("Text", action: canvas.addText)
                 Button("Image…") { showingImagePicker = true }
@@ -24,13 +24,19 @@ struct ContentView: View {
                 Button("Delete", action: canvas.deleteSelected).disabled(canvas.selectedID == nil)
                 Button("Front") { canvas.moveSelected(toFront: true) }.disabled(canvas.selectedID == nil)
                 Button("Back") { canvas.moveSelected(toFront: false) }.disabled(canvas.selectedID == nil)
-                Spacer(); Text(bluetooth.mediaProfile.name).font(.caption)
+                Spacer()
+                Text("Editing \(activeName) · \(bluetooth.mediaProfile.name)").font(.caption)
             }
-            CanvasEditor(document: canvas, size: CGSize(width: bluetooth.mediaProfile.width, height: bluetooth.mediaProfile.height), drawing: $drawing)
-                .frame(height: 280)
-            inspector
-            GroupBox("Print preview") {
-                HStack { preview("Top", top); preview("Bottom", bottom) }.padding(4)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    labelCanvas("Top label", document: top, index: 0)
+                    Divider()
+                    labelCanvas("Bottom label", document: bottom, index: 1)
+                    inspector
+                    GroupBox("Print preview — physical top / bottom layout") {
+                        VStack(spacing: 12) { preview("Top", top); preview("Bottom", bottom) }.padding(4)
+                    }
+                }
             }
             Button("Print 2 labels") { bluetooth.print([top, bottom]) }.disabled(bluetooth.connectedPrinter == nil)
         }
@@ -42,13 +48,20 @@ struct ContentView: View {
         }
     }
 
+    private func labelCanvas(_ title: String, document: CanvasDocument, index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.headline)
+            CanvasEditor(document: document, size: CGSize(width: bluetooth.mediaProfile.width, height: bluetooth.mediaProfile.height), drawing: $drawing, onActivate: { selectedLabel = index })
+                .frame(height: 210)
+        }
+    }
+
     @ViewBuilder private var inspector: some View {
         if let item = canvas.selected, case let .text(value) = item.content {
             HStack {
+                Text("\(activeName) text").font(.caption)
                 TextField("Text", text: textBinding(item.id, value))
-                Picker("Font", selection: fontBinding(item.id, item.font.familyName ?? "System")) {
-                    ForEach(families, id: \.self) { Text($0) }
-                }.frame(width: 180)
+                Picker("Font", selection: fontBinding(item.id, item.font.familyName ?? "System")) { ForEach(families, id: \.self) { Text($0) } }.frame(width: 180)
                 Stepper("\(Int(item.font.pointSize)) pt", value: fontSizeBinding(item.id, item.font.pointSize), in: 8...48)
                 Toggle("Bold", isOn: boldBinding(item.id, item.bold))
             }
@@ -56,7 +69,7 @@ struct ContentView: View {
     }
 
     private func preview(_ name: String, _ canvas: CanvasDocument) -> some View {
-        VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 260) }
+        VStack { Text(name).font(.caption); Image(nsImage: NimbotProtocol.preview(canvas: canvas, media: bluetooth.mediaProfile)).resizable().interpolation(.none).scaledToFit().frame(width: 300) }
     }
 
     private func textBinding(_ id: UUID, _ value: String) -> Binding<String> { Binding(get: { value }, set: { text in canvas.update(id) { $0.content = .text(text) } }) }
