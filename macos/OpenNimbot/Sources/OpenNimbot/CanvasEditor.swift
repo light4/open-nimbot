@@ -63,23 +63,37 @@ private struct CanvasLayerView: View {
         content
             .frame(width: max(1, layer.frame.width * scale), height: max(1, layer.frame.height * scale), alignment: .topLeading)
             .position(x: layer.frame.midX * scale, y: layer.frame.midY * scale)
-            .overlay { if document.selectedID == layer.id { Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3])) } }
+            .overlay {
+                if document.selectedID == layer.id {
+                    Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    Circle()
+                        .fill(.blue)
+                        .frame(width: 10, height: 10)
+                        .offset(x: 5, y: 5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .gesture(resizeGesture)
+                }
+            }
             .contentShape(Rectangle())
             .onTapGesture { document.selectedID = layer.id }
             .gesture(DragGesture().onChanged { value in
                 if dragOrigin == nil { dragOrigin = layer.frame.origin }
                 document.update(layer.id) { $0.frame.origin = CGPoint(x: dragOrigin!.x + value.translation.width / scale, y: dragOrigin!.y + value.translation.height / scale) }
             }.onEnded { _ in dragOrigin = nil })
-            .simultaneousGesture(MagnificationGesture().onChanged { value in
-                if case .text = layer.content {
-                    if resizeFont == nil { resizeFont = layer.font }
-                    document.update(layer.id) { $0.font = NSFontManager.shared.convert(resizeFont!, toSize: max(8, resizeFont!.pointSize * value)) }
-                    document.fitText(layer.id)
-                } else {
-                    if resizeFrame == nil { resizeFrame = layer.frame }
-                    document.update(layer.id) { $0.frame.size = CGSize(width: max(12, resizeFrame!.width * value), height: max(12, resizeFrame!.height * value)) }
-                }
-            }.onEnded { _ in resizeFrame = nil; resizeFont = nil })
+    }
+
+    private var resizeGesture: some Gesture {
+        DragGesture().onChanged { value in
+            if case .text = layer.content {
+                if resizeFont == nil || resizeFrame == nil { resizeFont = layer.font; resizeFrame = layer.frame }
+                let factor = max(0.25, (resizeFrame!.width + value.translation.width / scale) / resizeFrame!.width)
+                document.update(layer.id) { $0.font = NSFontManager.shared.convert(resizeFont!, toSize: max(8, resizeFont!.pointSize * factor)) }
+                document.fitText(layer.id)
+            } else {
+                if resizeFrame == nil { resizeFrame = layer.frame }
+                document.update(layer.id) { $0.frame.size = CGSize(width: max(12, resizeFrame!.width + value.translation.width / scale), height: max(12, resizeFrame!.height + value.translation.height / scale)) }
+            }
+        }.onEnded { _ in resizeFrame = nil; resizeFont = nil }
     }
 
     @ViewBuilder private var content: some View {
