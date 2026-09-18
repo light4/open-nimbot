@@ -218,10 +218,18 @@ struct ContentView: View {
                 .pickerStyle(.menu)
                 Stepper("Size: \(Int(fontSize))", value: $fontSize, in: 10...48, step: 1)
             }
+            GroupBox("Print preview") {
+                Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize))
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+                    .frame(width: 320)
+                    .padding(8)
+            }
             Button("Print label") { bluetooth.print(text, fontName: fontName, fontSize: fontSize) }
                 .disabled(bluetooth.connectedPrinter == nil || text.isEmpty)
         }
         .padding()
-        .frame(minWidth: 440, minHeight: 430)
+        .frame(minWidth: 440, minHeight: 620)
     }
 }

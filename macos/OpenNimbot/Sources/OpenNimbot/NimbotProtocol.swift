@@ -33,6 +33,10 @@ enum NimbotProtocol {
 
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
 
+    static func preview(text: String, fontName: String, fontSize: CGFloat) -> NSImage {
+        render(text: text, width: 160, fontName: fontName, fontSize: fontSize)
+    }
+
     static func mediaDescription(_ data: [UInt8]) -> String {
         guard data.count > 9 else { return "No readable label RFID" }
         let uuid = data.prefix(8).map { String(format: "%02X", $0) }.joined()
@@ -62,6 +66,19 @@ enum NimbotProtocol {
     }
 
     private static func rasterRows(text: String, width: Int, fontName: String, fontSize: CGFloat) -> [[UInt8]] {
+        let image = render(text: text, width: width, fontName: fontName, fontSize: fontSize)
+        guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) else { return [] }
+        return (0..<Int(image.size.height)).map { y in
+            stride(from: 0, to: width, by: 8).map { x in
+                (0..<8).reduce(0) { byte, bit in
+                    let pixel = bitmap.colorAt(x: x + bit, y: y) ?? .white
+                    return byte | (pixel.brightnessComponent < 0.5 ? 1 << (7 - bit) : 0)
+                }
+            }
+        }
+    }
+
+    private static func render(text: String, width: Int, fontName: String, fontSize: CGFloat) -> NSImage {
         let font = fontName == "System" ? NSFont.systemFont(ofSize: fontSize) : NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
         let textHeight = (text as NSString).boundingRect(
@@ -79,14 +96,6 @@ enum NimbotProtocol {
             withAttributes: attributes
         )
         image.unlockFocus()
-        guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) else { return [] }
-        return (0..<Int(size.height)).map { y in
-            stride(from: 0, to: width, by: 8).map { x in
-                (0..<8).reduce(0) { byte, bit in
-                    let pixel = bitmap.colorAt(x: x + bit, y: y) ?? .white
-                    return byte | (pixel.brightnessComponent < 0.5 ? 1 << (7 - bit) : 0)
-                }
-            }
-        }
+        return image
     }
 }
