@@ -47,7 +47,7 @@ enum NimbotProtocol {
         let barcode = String(decoding: data[9..<(9 + barcodeLength)], as: UTF8.self)
         // 6971501227682: NIIMBOT 30 × 15 mm / 2R white gap labels (203 dpi).
         if barcode == "6971501227682" {
-            return LabelMedia(barcode: barcode, width: 240, height: 120, name: "30 × 15 mm gap label (2R)")
+            return LabelMedia(barcode: barcode, width: 240, height: 120, name: "30 × 15 mm gap label (2R; one label)")
         }
         return nil
     }
