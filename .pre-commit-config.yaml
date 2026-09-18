@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: python-lint
+        name: Python lint
+        entry: uvx ruff check src/nimbot_connect.py
+        language: system
+        pass_filenames: false
+        files: ^src/.*\.py$
+      - id: python-format
+        name: Python format
+        entry: uvx ruff format --check src/nimbot_connect.py
+        language: system
+        pass_filenames: false
+        files: ^src/.*\.py$
+      - id: macos-tests
+        name: macOS app tests
+        entry: swift test --package-path macos/OpenNimbot
+        language: system
+        pass_filenames: false
+        files: ^macos/OpenNimbot/
