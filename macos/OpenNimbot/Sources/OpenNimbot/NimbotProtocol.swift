@@ -34,7 +34,10 @@ enum NimbotProtocol {
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
 
     static func preview(text: String, fontName: String, fontSize: CGFloat) -> NSImage {
-        render(text: text, width: 160, fontName: fontName, fontSize: fontSize)
+        let bitmap = renderBitmap(text: text, width: 160, fontName: fontName, fontSize: fontSize)
+        let image = NSImage(size: bitmap.size)
+        image.addRepresentation(bitmap)
+        return image
     }
 
     static func mediaDescription(_ data: [UInt8]) -> String {
@@ -66,9 +69,8 @@ enum NimbotProtocol {
     }
 
     private static func rasterRows(text: String, width: Int, fontName: String, fontSize: CGFloat) -> [[UInt8]] {
-        let image = render(text: text, width: width, fontName: fontName, fontSize: fontSize)
-        guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) else { return [] }
-        return (0..<Int(image.size.height)).map { y in
+        let bitmap = renderBitmap(text: text, width: width, fontName: fontName, fontSize: fontSize)
+        return (0..<bitmap.pixelsHigh).map { y in
             stride(from: 0, to: width, by: 8).map { x in
                 (0..<8).reduce(0) { byte, bit in
                     let pixel = bitmap.colorAt(x: x + bit, y: y) ?? .white
@@ -78,7 +80,7 @@ enum NimbotProtocol {
         }
     }
 
-    private static func render(text: String, width: Int, fontName: String, fontSize: CGFloat) -> NSImage {
+    private static func renderBitmap(text: String, width: Int, fontName: String, fontSize: CGFloat) -> NSBitmapImageRep {
         let font = fontName == "System" ? NSFont.systemFont(ofSize: fontSize) : NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
         let textHeight = (text as NSString).boundingRect(
@@ -87,15 +89,28 @@ enum NimbotProtocol {
             attributes: attributes
         ).height
         let size = NSSize(width: width, height: max(80, Int(ceil(textHeight)) + 24))
-        let image = NSImage(size: size)
-        image.lockFocus()
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: Int(size.height),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let context = NSGraphicsContext(bitmapImageRep: bitmap)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
         NSColor.white.setFill()
         NSBezierPath(rect: NSRect(origin: .zero, size: size)).fill()
         (text as NSString).draw(
             in: NSRect(x: 12, y: 12, width: size.width - 24, height: size.height - 24),
             withAttributes: attributes
         )
-        image.unlockFocus()
-        return image
+        NSGraphicsContext.restoreGraphicsState()
+        return bitmap
     }
 }
