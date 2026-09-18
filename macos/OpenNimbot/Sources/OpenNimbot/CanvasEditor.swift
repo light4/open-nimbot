@@ -40,17 +40,17 @@ struct CanvasEditor: View {
                 @unknown default: break
                 }
             }
-            .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { value in
-                guard drawing else { return }
-                stroke.append(CGPoint(x: value.location.x / scale, y: value.location.y / scale))
-            }.onEnded { _ in
-                guard drawing else { return }
-                document.addPath(stroke)
-                stroke = []
-            })
+            .gesture(drawing ? drawingGesture(scale: scale) : nil)
+            .transaction { $0.animation = nil }
         }
         .aspectRatio(size.width / size.height, contentMode: .fit)
         .border(.secondary)
+    }
+
+    private func drawingGesture(scale: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { stroke.append(CGPoint(x: $0.location.x / scale, y: $0.location.y / scale)) }
+            .onEnded { _ in document.addPath(stroke); stroke = [] }
     }
 
     private func path(_ points: [CGPoint], scale: CGFloat) -> Path {
