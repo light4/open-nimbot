@@ -10,19 +10,21 @@ enum NimbotProtocol {
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
 
     static func printFrames(canvases: [CanvasDocument], media: LabelMedia) -> [Data] {
-        var frames = [frame(0x21, [0x03]), frame(0x23, [0x01]), frame(0x01, uint16(canvases.count) + [0, 0, 0, 0, 0])]
-        for canvas in canvases {
-            frames += [frame(0x03, [0x01]), frame(0x13, uint16(media.height) + uint16(media.width) + [0, 1])]
-            for (y, row) in rasterRows(canvas: canvas, media: media).enumerated() {
-                if row.allSatisfy({ $0 == 0 }) { frames.append(frame(0x84, uint16(y) + [1])) }
-                else {
-                    let counts = [UInt8(row.prefix(16).reduce(0) { $0 + $1.nonzeroBitCount }), UInt8(row.dropFirst(16).reduce(0) { $0 + $1.nonzeroBitCount }), 0]
-                    frames.append(frame(0x85, uint16(y) + counts + [1] + row))
-                }
+        // 2R is one physical page with a top and bottom label, not two pages.
+        let rows = canvases.flatMap { rasterRows(canvas: $0, media: media) }
+        var frames = [
+            frame(0x21, [0x03]), frame(0x23, [0x01]),
+            frame(0x01, uint16(1) + [0, 0, 0, 0, 0]),
+            frame(0x03, [0x01]), frame(0x13, uint16(rows.count) + uint16(media.width) + [0, 1]),
+        ]
+        for (y, row) in rows.enumerated() {
+            if row.allSatisfy({ $0 == 0 }) { frames.append(frame(0x84, uint16(y) + [1])) }
+            else {
+                let counts = [UInt8(row.prefix(16).reduce(0) { $0 + $1.nonzeroBitCount }), UInt8(row.dropFirst(16).reduce(0) { $0 + $1.nonzeroBitCount }), 0]
+                frames.append(frame(0x85, uint16(y) + counts + [1] + row))
             }
-            frames.append(frame(0xE3, [1]))
         }
-        return frames
+        return frames + [frame(0xE3, [1])]
     }
 
     static func preview(canvas: CanvasDocument, media: LabelMedia) -> NSImage {

@@ -38,7 +38,7 @@ struct ContentView: View {
                     }
                 }
             }
-            Button("Print 2 labels") { bluetooth.print([top, bottom]) }.disabled(bluetooth.connectedPrinter == nil)
+            Button("Print label pair") { bluetooth.print([top, bottom]) }.disabled(bluetooth.connectedPrinter == nil)
         }
         .padding().frame(minWidth: 620, minHeight: 650)
         .fileImporter(isPresented: $showingImagePicker, allowedContentTypes: [.image]) { result in
