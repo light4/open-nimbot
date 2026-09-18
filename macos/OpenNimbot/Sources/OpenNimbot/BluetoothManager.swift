@@ -80,11 +80,19 @@ final class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelega
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         characteristic = service.characteristics?.first(where: { $0.uuid == NimbotProtocol.characteristic })
         if let characteristic {
+            status = "Preparing label media reader…"
             peripheral.setNotifyValue(true, for: characteristic)
-            status = "Ready to print."
         } else {
             status = "NIMBOT print channel was not found."
         }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic.uuid == NimbotProtocol.characteristic, characteristic.isNotifying else {
+            status = "Could not enable the NIMBOT response channel."
+            return
+        }
+        readMedia()
     }
 
     func readMedia() {
