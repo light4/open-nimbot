@@ -6,6 +6,7 @@ struct CanvasEditor: View {
     let size: CGSize
     @Binding var drawing: Bool
     let onActivate: () -> Void
+    @FocusState private var focused: Bool
     @State private var stroke: [CGPoint] = []
 
     var body: some View {
@@ -18,9 +19,9 @@ struct CanvasEditor: View {
                         path(points, scale: scale)
                             .stroke(document.selectedID == layer.id ? .blue : .black, lineWidth: 2)
                             .contentShape(Rectangle())
-                            .onTapGesture { document.selectedID = layer.id }
+                            .onTapGesture { onActivate(); focused = true; document.selectedID = layer.id }
                     } else {
-                        CanvasLayerView(layer: layer, document: document, scale: scale)
+                        CanvasLayerView(layer: layer, document: document, scale: scale, onActivate: { onActivate(); focused = true })
                     }
                 }
                 if stroke.count > 1 {
@@ -28,7 +29,17 @@ struct CanvasEditor: View {
                 }
             }
             .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded(onActivate))
+            .focusable()
+            .focused($focused)
+            .onMoveCommand { direction in
+                switch direction {
+                case .up: document.nudgeSelected(x: 0, y: -1)
+                case .down: document.nudgeSelected(x: 0, y: 1)
+                case .left: document.nudgeSelected(x: -1, y: 0)
+                case .right: document.nudgeSelected(x: 1, y: 0)
+                @unknown default: break
+                }
+            }
             .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { value in
                 guard drawing else { return }
                 stroke.append(CGPoint(x: value.location.x / scale, y: value.location.y / scale))
@@ -55,6 +66,7 @@ private struct CanvasLayerView: View {
     let layer: CanvasLayer
     @ObservedObject var document: CanvasDocument
     let scale: CGFloat
+    let onActivate: () -> Void
     @State private var dragOffset = CGSize.zero
     @State private var resizeOffset = CGSize.zero
 
@@ -77,7 +89,7 @@ private struct CanvasLayerView: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture { document.selectedID = layer.id }
+            .onTapGesture { onActivate(); document.selectedID = layer.id }
             .gesture(
                 DragGesture()
                     .onChanged { dragOffset = $0.translation }

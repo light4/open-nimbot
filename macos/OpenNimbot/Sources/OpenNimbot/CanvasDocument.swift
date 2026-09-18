@@ -75,6 +75,11 @@ final class CanvasDocument: ObservableObject {
         selectedID = nil
     }
 
+    func nudgeSelected(x: CGFloat, y: CGFloat) {
+        guard let selectedID else { return }
+        update(selectedID) { $0.frame.origin.x += x; $0.frame.origin.y += y }
+    }
+
     func deleteSelected() {
         guard let selectedID else { return }
         layers.removeAll { $0.id == selectedID }

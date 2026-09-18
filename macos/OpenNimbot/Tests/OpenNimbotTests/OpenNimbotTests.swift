@@ -34,13 +34,15 @@ final class OpenNimbotIntegrationTests: XCTestCase {
             $0.frame.origin = CGPoint(x: 30, y: 40)
         }
         top.fitText(layer.id)
+        top.selectedID = layer.id
+        top.nudgeSelected(x: 2, y: -3)
 
         let bottom = CanvasDocument(text: "placeholder")
         bottom.replaceLayers(with: top)
         let frames = NimbotProtocol.printFrames(canvases: [top, bottom], media: media)
 
         XCTAssertEqual(bottom.layers.count, top.layers.count)
-        XCTAssertEqual(bottom.layers[1].frame.origin, CGPoint(x: 30, y: 40))
+        XCTAssertEqual(bottom.layers[1].frame.origin, CGPoint(x: 32, y: 37))
         XCTAssertEqual(frames.filter { $0[2] == 0x85 || $0[2] == 0x84 }.count, 240)
     }
 }
