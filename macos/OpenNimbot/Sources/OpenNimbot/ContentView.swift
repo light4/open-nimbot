@@ -2,7 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var bluetooth = BluetoothManager()
-    @State private var text = "你好，NIMBOT"
+    @State private var topText = "你好，NIMBOT"
+    @State private var bottomText = "第二张标签"
     @State private var fontName = "System"
     @State private var fontSize = 24.0
     private let fontNames = ["System", "Hiragino Sans GB", "Songti SC", "Menlo"]
@@ -15,7 +16,10 @@ struct ContentView: View {
                 printerMenu
             }
             Text(bluetooth.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            TextEditor(text: $text).font(.system(size: 20)).frame(height: 90)
+            HStack(spacing: 12) {
+                labelEditor("Top label", text: $topText)
+                labelEditor("Bottom label", text: $bottomText)
+            }
             HStack {
                 Picker("Font", selection: $fontName) {
                     ForEach(fontNames, id: \.self) { Text($0) }
@@ -25,20 +29,39 @@ struct ContentView: View {
                 Spacer()
                 Text(bluetooth.mediaProfile.name).font(.caption).foregroundStyle(.secondary)
             }
-            GroupBox("Preview — one label") {
-                Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize, media: bluetooth.mediaProfile))
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
-                    .frame(width: 320)
-                    .padding(6)
+            GroupBox("Preview — two independent labels") {
+                VStack(spacing: 12) {
+                    preview("Top", text: topText)
+                    preview("Bottom", text: bottomText)
+                }
+                .padding(6)
             }
-            Button("Print label") { bluetooth.print(text, fontName: fontName, fontSize: fontSize) }
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(bluetooth.connectedPrinter == nil || text.isEmpty)
+            Button("Print 2 labels") {
+                bluetooth.print([topText, bottomText], fontName: fontName, fontSize: fontSize)
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .disabled(bluetooth.connectedPrinter == nil || topText.isEmpty || bottomText.isEmpty)
         }
         .padding()
-        .frame(minWidth: 440, minHeight: 440)
+        .frame(minWidth: 600, minHeight: 650)
+    }
+
+    private func labelEditor(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption.weight(.medium))
+            TextEditor(text: text).font(.system(size: 16)).frame(height: 70)
+        }
+    }
+
+    private func preview(_ title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption.weight(.medium))
+            Image(nsImage: NimbotProtocol.preview(text: text, fontName: fontName, fontSize: fontSize, media: bluetooth.mediaProfile))
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: 320)
+        }
     }
 
     private var printerMenu: some View {

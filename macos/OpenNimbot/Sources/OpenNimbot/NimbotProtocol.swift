@@ -9,26 +9,29 @@ enum NimbotProtocol {
         [frame(0x1A, [0x01])]
     }
 
-    static func printFrames(text: String, fontName: String, fontSize: CGFloat, media: LabelMedia) -> [Data] {
-        let rows = rasterRows(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
+    static func printFrames(labels: [String], fontName: String, fontSize: CGFloat, media: LabelMedia) -> [Data] {
         var frames = [
             frame(0x21, [0x03]), frame(0x23, [0x01]),
-            frame(0x01, [0, 1, 0, 0, 0, 0, 0]), frame(0x03, [0x01]),
-            frame(0x13, uint16(rows.count) + uint16(media.width) + [0, 1]),
+            frame(0x01, uint16(labels.count) + [0, 0, 0, 0, 0]),
         ]
-        for (y, row) in rows.enumerated() {
-            if row.allSatisfy({ $0 == 0 }) {
-                frames.append(frame(0x84, uint16(y) + [0x01]))
-            } else {
-                let counts = [
-                    UInt8(row.prefix(16).reduce(0) { $0 + $1.nonzeroBitCount }),
-                    UInt8(row.dropFirst(16).reduce(0) { $0 + $1.nonzeroBitCount }),
-                    0,
-                ]
-                frames.append(frame(0x85, uint16(y) + counts + [0x01] + row))
+        for text in labels {
+            let rows = rasterRows(text: text, width: media.width, height: media.height, fontName: fontName, fontSize: fontSize)
+            frames += [frame(0x03, [0x01]), frame(0x13, uint16(rows.count) + uint16(media.width) + [0, 1])]
+            for (y, row) in rows.enumerated() {
+                if row.allSatisfy({ $0 == 0 }) {
+                    frames.append(frame(0x84, uint16(y) + [0x01]))
+                } else {
+                    let counts = [
+                        UInt8(row.prefix(16).reduce(0) { $0 + $1.nonzeroBitCount }),
+                        UInt8(row.dropFirst(16).reduce(0) { $0 + $1.nonzeroBitCount }),
+                        0,
+                    ]
+                    frames.append(frame(0x85, uint16(y) + counts + [0x01] + row))
+                }
             }
+            frames.append(frame(0xE3, [0x01]))
         }
-        return frames + [frame(0xE3, [0x01])]
+        return frames
     }
 
     static func finishPrintFrame() -> Data { frame(0xF3, [0x01]) }
