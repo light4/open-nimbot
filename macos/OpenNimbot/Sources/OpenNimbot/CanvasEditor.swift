@@ -157,9 +157,13 @@ private struct CanvasLayerView: View {
   @ViewBuilder private var content: some View {
     switch layer.content {
     case .text(let text):
-      Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular).italic(
-        layer.italic
-      ).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: textAlignment)
+      Text(text)
+        .font(Font(layer.font))
+        .fontWeight(layer.bold ? .bold : .regular)
+        .transformEffect(
+          layer.italic ? CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0) : .identity
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: textAlignment)
     case .image(let image): Image(nsImage: image).resizable().scaledToFit()
     case .path: EmptyView()
     }

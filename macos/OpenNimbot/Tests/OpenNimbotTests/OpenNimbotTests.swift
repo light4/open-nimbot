@@ -50,6 +50,13 @@ final class OpenNimbotIntegrationTests: XCTestCase {
     XCTAssertEqual(bottom.layers[1].frame.origin, CGPoint(x: 32, y: 37))
     XCTAssertEqual(bottom.layers[1].frame.size, top.layers[1].frame.size)
     XCTAssertNotEqual(previewBeforeMove, previewAfterMove)
+
+    let italic = CanvasDocument(text: "Italic")
+    let regularPreview = NimbotProtocol.preview(canvas: italic, media: media).tiffRepresentation
+    italic.update(italic.layers[0].id) { $0.italic = true }
+    italic.fitText(italic.layers[0].id)
+    XCTAssertNotEqual(
+      regularPreview, NimbotProtocol.preview(canvas: italic, media: media).tiffRepresentation)
     XCTAssertEqual(frames.filter { $0[2] == 0x85 || $0[2] == 0x84 }.count, 240)
   }
 }

@@ -87,9 +87,17 @@ enum NimbotProtocol {
         if layer.italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
         let style = NSMutableParagraphStyle()
         style.alignment = layer.alignment
+        let frame = physicalFrame(layer.frame, height: media.height)
+        context.cgContext.saveGState()
+        if layer.italic {
+          context.cgContext.translateBy(x: frame.minX, y: frame.minY)
+          context.cgContext.concatenate(CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0))
+          context.cgContext.translateBy(x: -frame.minX, y: -frame.minY)
+        }
         (text as NSString).draw(
-          in: physicalFrame(layer.frame, height: media.height),
+          in: frame,
           withAttributes: [.font: font, .foregroundColor: NSColor.black, .paragraphStyle: style])
+        context.cgContext.restoreGState()
       case .image(let image):
         image.draw(in: physicalFrame(layer.frame, height: media.height))
       case .path(let points):

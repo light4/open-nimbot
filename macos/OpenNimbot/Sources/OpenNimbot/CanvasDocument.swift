@@ -59,7 +59,8 @@ final class CanvasDocument: ObservableObject {
       attributes: [.font: font]
     ).integral.size
     layers[index].frame.size = CGSize(
-      width: max(1, size.width + 8), height: max(1, size.height + 6))
+      width: max(1, size.width + 8 + (layers[index].italic ? font.pointSize * 0.2 : 0)),
+      height: max(1, size.height + 6))
   }
 
   func addImage(_ image: NSImage) {
