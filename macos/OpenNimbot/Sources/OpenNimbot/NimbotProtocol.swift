@@ -75,7 +75,9 @@ enum NimbotProtocol {
             case let .text(text):
                 var font = layer.bold ? NSFontManager.shared.convert(layer.font, toHaveTrait: .boldFontMask) : layer.font
                 if layer.italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
-                (text as NSString).draw(in: physicalFrame(layer.frame, height: media.height), withAttributes: [.font: font, .foregroundColor: NSColor.black])
+                let style = NSMutableParagraphStyle()
+                style.alignment = layer.alignment
+                (text as NSString).draw(in: physicalFrame(layer.frame, height: media.height), withAttributes: [.font: font, .foregroundColor: NSColor.black, .paragraphStyle: style])
             case let .image(image):
                 image.draw(in: physicalFrame(layer.frame, height: media.height))
             case let .path(points):

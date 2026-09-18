@@ -57,7 +57,6 @@ private struct CanvasLayerView: View {
     let scale: CGFloat
     @GestureState private var dragTranslation = CGSize.zero
     @State private var resizeFrame: CGRect?
-    @State private var resizeFont: NSFont?
 
     var body: some View {
         content
@@ -93,21 +92,27 @@ private struct CanvasLayerView: View {
 
     private var resizeGesture: some Gesture {
         DragGesture().onChanged { value in
-            if case .text = layer.content {
-                if resizeFont == nil || resizeFrame == nil { resizeFont = layer.font; resizeFrame = layer.frame }
-                let factor = max(0.25, (resizeFrame!.width + value.translation.width / scale) / resizeFrame!.width)
-                document.update(layer.id) { $0.font = NSFontManager.shared.convert(resizeFont!, toSize: max(8, resizeFont!.pointSize * factor)) }
-                document.fitText(layer.id)
-            } else {
-                if resizeFrame == nil { resizeFrame = layer.frame }
-                document.update(layer.id) { $0.frame.size = CGSize(width: max(12, resizeFrame!.width + value.translation.width / scale), height: max(12, resizeFrame!.height + value.translation.height / scale)) }
+            if resizeFrame == nil { resizeFrame = layer.frame }
+            document.update(layer.id) {
+                $0.frame.size = CGSize(
+                    width: max(12, resizeFrame!.width + value.translation.width / scale),
+                    height: max(12, resizeFrame!.height + value.translation.height / scale)
+                )
             }
-        }.onEnded { _ in resizeFrame = nil; resizeFont = nil }
+        }.onEnded { _ in resizeFrame = nil }
+    }
+
+    private var textAlignment: Alignment {
+        switch layer.alignment {
+        case .left, .natural, .justified: .leading
+        case .right: .trailing
+        default: .center
+        }
     }
 
     @ViewBuilder private var content: some View {
         switch layer.content {
-        case let .text(text): Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular).italic(layer.italic)
+        case let .text(text): Text(text).font(Font(layer.font)).fontWeight(layer.bold ? .bold : .regular).italic(layer.italic).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: textAlignment)
         case let .image(image): Image(nsImage: image).resizable().scaledToFit()
         case .path: EmptyView()
         }

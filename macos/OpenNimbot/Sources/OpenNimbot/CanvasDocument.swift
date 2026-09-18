@@ -14,6 +14,7 @@ struct CanvasLayer: Identifiable {
     var font: NSFont = .systemFont(ofSize: 18)
     var bold = false
     var italic = false
+    var alignment: NSTextAlignment = .center
     var zIndex = 0
 }
 
@@ -47,7 +48,7 @@ final class CanvasDocument: ObservableObject {
         if layers[index].bold { font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) }
         if layers[index].italic { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
         let size = CGRect(origin: .zero, size: (text as NSString).size(withAttributes: [.font: font])).integral.size
-        layers[index].frame.size = CGSize(width: max(1, size.width), height: max(1, size.height))
+        layers[index].frame.size = CGSize(width: max(1, size.width + 8), height: max(1, size.height + 6))
     }
 
     func addImage(_ image: NSImage) {
@@ -65,7 +66,7 @@ final class CanvasDocument: ObservableObject {
 
     func replaceLayers(with source: CanvasDocument) {
         layers = source.layers.map {
-            CanvasLayer(content: $0.content, frame: $0.frame, font: $0.font, bold: $0.bold, italic: $0.italic, zIndex: $0.zIndex)
+            CanvasLayer(content: $0.content, frame: $0.frame, font: $0.font, bold: $0.bold, italic: $0.italic, alignment: $0.alignment, zIndex: $0.zIndex)
         }
         selectedID = nil
     }

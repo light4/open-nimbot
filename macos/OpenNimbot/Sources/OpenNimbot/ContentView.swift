@@ -70,6 +70,11 @@ struct ContentView: View {
                 Stepper("\(Int(item.font.pointSize)) pt", value: fontSizeBinding(item.id, item.font.pointSize), in: 8...48)
                 Toggle("Bold", isOn: boldBinding(item.id, item.bold))
                 Toggle("Italic", isOn: italicBinding(item.id, item.italic))
+                Picker("Align", selection: alignmentBinding(item.id, item.alignment)) {
+                    Text("Left").tag(NSTextAlignment.left)
+                    Text("Center").tag(NSTextAlignment.center)
+                    Text("Right").tag(NSTextAlignment.right)
+                }.pickerStyle(.segmented).frame(width: 150)
             }
         }
     }
@@ -83,6 +88,7 @@ struct ContentView: View {
     private func fontSizeBinding(_ id: UUID, _ value: CGFloat) -> Binding<Double> { Binding(get: { Double(value) }, set: { size in canvas.update(id) { $0.font = NSFontManager.shared.convert($0.font, toSize: CGFloat(size)) }; canvas.fitText(id) }) }
     private func boldBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.bold = enabled }; canvas.fitText(id) }) }
     private func italicBinding(_ id: UUID, _ value: Bool) -> Binding<Bool> { Binding(get: { value }, set: { enabled in canvas.update(id) { $0.italic = enabled }; canvas.fitText(id) }) }
+    private func alignmentBinding(_ id: UUID, _ value: NSTextAlignment) -> Binding<NSTextAlignment> { Binding(get: { value }, set: { alignment in canvas.update(id) { $0.alignment = alignment } }) }
 
     private var printerMenu: some View { Menu { Button("Scan", action: bluetooth.scan); ForEach(bluetooth.printers) { printer in Button(printer.name) { bluetooth.connect(printer) } }; if bluetooth.connectedPrinter != nil { Button("Refresh media", action: bluetooth.readMedia) } } label: { Label(bluetooth.connectedPrinter?.name ?? "Printer", systemImage: "printer") } }
 }
