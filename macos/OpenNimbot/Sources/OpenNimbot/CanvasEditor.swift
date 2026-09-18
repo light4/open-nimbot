@@ -55,12 +55,16 @@ private struct CanvasLayerView: View {
     let layer: CanvasLayer
     @ObservedObject var document: CanvasDocument
     let scale: CGFloat
-    @GestureState private var dragTranslation = CGSize.zero
-    @State private var resizeFrame: CGRect?
+    @State private var dragOffset = CGSize.zero
+    @State private var resizeOffset = CGSize.zero
 
     var body: some View {
         content
-            .frame(width: max(1, layer.frame.width * scale), height: max(1, layer.frame.height * scale), alignment: .topLeading)
+            .frame(
+                width: max(12, layer.frame.width * scale + resizeOffset.width),
+                height: max(12, layer.frame.height * scale + resizeOffset.height),
+                alignment: .topLeading
+            )
             .overlay {
                 if document.selectedID == layer.id {
                     Rectangle().inset(by: -3).stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
@@ -76,30 +80,33 @@ private struct CanvasLayerView: View {
             .onTapGesture { document.selectedID = layer.id }
             .gesture(
                 DragGesture()
-                    .updating($dragTranslation) { value, state, _ in state = value.translation }
+                    .onChanged { dragOffset = $0.translation }
                     .onEnded { value in
                         document.update(layer.id) {
                             $0.frame.origin.x += value.translation.width / scale
                             $0.frame.origin.y += value.translation.height / scale
                         }
+                        dragOffset = .zero
                     }
             )
             .position(
-                x: layer.frame.midX * scale + dragTranslation.width,
-                y: layer.frame.midY * scale + dragTranslation.height
+                x: layer.frame.midX * scale + dragOffset.width + resizeOffset.width / 2,
+                y: layer.frame.midY * scale + dragOffset.height + resizeOffset.height / 2
             )
     }
 
     private var resizeGesture: some Gesture {
         DragGesture().onChanged { value in
-            if resizeFrame == nil { resizeFrame = layer.frame }
+            resizeOffset = value.translation
+        }.onEnded { value in
             document.update(layer.id) {
                 $0.frame.size = CGSize(
-                    width: max(12, resizeFrame!.width + value.translation.width / scale),
-                    height: max(12, resizeFrame!.height + value.translation.height / scale)
+                    width: max(12, $0.frame.width + value.translation.width / scale),
+                    height: max(12, $0.frame.height + value.translation.height / scale)
                 )
             }
-        }.onEnded { _ in resizeFrame = nil }
+            resizeOffset = .zero
+        }
     }
 
     private var textAlignment: Alignment {
